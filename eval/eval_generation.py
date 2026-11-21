@@ -15,6 +15,7 @@ Metrics (holdout tickets):
   citation_validity        replies citing >= 1 precedent, all cited ids retrieved
   language_match           reply language == ticket language
   unsupported_number_rate  replies containing a number found in neither ticket nor evidence
+  placeholder_leak_rate    replies containing a dataset placeholder (<name>, <tel_num>, [acc_num], ...)
   first_pass_accept_rate   accepted without a repair round;  gemini_served_rate vs. extractive fallback
   draft_escalation_rate    share the gate would escalate because of the draft (UNGROUNDED / UNSUPPORTED)
   faithfulness (--judge)   share of replies whose every claim is supported by the precedents
@@ -153,6 +154,7 @@ def run_case(retriever, generator, cid, subject, body, k, use_judge, judge_model
                           and not g.get("invalid_citations"),
         "language_ok": bool(resp.reply) and detect_language(resp.reply) == lang,
         "unsupported_numbers": g.get("unsupported_numbers", []),
+        "dataset_placeholders": sorted(set(grounded._DATASET_PH.findall(resp.reply or ""))),
         "grounded": resp.grounded,
         "refused": resp.refused,
         "groundedness_score": resp.groundedness_score,
@@ -285,6 +287,7 @@ def main():
         "citation_validity": rate(hold, lambda r: r["citation_valid"]),
         "language_match": rate(hold, lambda r: r["language_ok"]),
         "unsupported_number_rate": rate(hold, lambda r: r["unsupported_numbers"]),
+        "placeholder_leak_rate": rate(hold, lambda r: r["dataset_placeholders"]),
         "gemini_served_rate": round(len(served) / max(len(hold), 1), 3),
         "first_pass_accept_rate": rate(hold, lambda r: r["attempts"] and r["attempts"][0].get("outcome") == "accepted"),
         "served_by": dict(Counter(r["model"] for r in hold)),
