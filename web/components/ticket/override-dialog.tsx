@@ -53,13 +53,13 @@ export function OverrideDialog({
         }
       }}
     >
-      <DialogTrigger render={<Button variant="outline" size="sm" />}>
-        <SlidersHorizontal /> Override
+      <DialogTrigger render={<Button variant="secondary" size="sm" disabled={!classification} />}>
+        <SlidersHorizontal /> Override fields
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Override classification</DialogTitle>
-          <DialogDescription>Correct the model&apos;s labels. Overrides are recorded in the audit log and can feed retraining.</DialogDescription>
+          <DialogTitle>Override AI fields</DialogTitle>
+          <DialogDescription>Correct the type, queue or priority the model picked. Your change is recorded in the audit log and can be used to retrain the model.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">
           {(["type", "queue", "priority"] as Head[]).map((h) => (
