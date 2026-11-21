@@ -63,3 +63,56 @@ def test_push_message_mentions_ticket_and_held_back_count():
     push = notifier.build_push(ev, held_back=3)
     assert "page down" in push["title"] and push["priority"] == 5
     assert "LIVE-1" in push["message"] and "+3 more" in push["message"]
+
+
+def test_email_is_built_with_subject_link_and_both_parts():
+    notifier.EMAIL_FROM, notifier.EMAIL_TO = "pager@example.com", ["oncall@example.com"]
+    push = {"title": "🚨 SentinelDesk on-call: system crash", "message": "LIVE-1 · high\nCheckout down",
+            "click": "https://console.example/queue?ticket=LIVE-1"}
+    msg = notifier.build_email(push)
+    assert msg["Subject"] == push["title"] and msg["To"] == "oncall@example.com"
+    parts = {p.get_content_type(): p.get_content() for p in msg.iter_parts()}
+    assert "Open ticket: https://console.example/queue?ticket=LIVE-1" in parts["text/plain"]
+    assert "Open ticket in SentinelDesk" in parts["text/html"] and "LIVE-1" in parts["text/html"]
+
+
+def test_delivery_succeeds_if_any_channel_works(monkeypatch):
+    import asyncio
+    sent = []
+
+    class FakeSMTP:
+        def __init__(self, host, port, timeout=None): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def starttls(self, context=None): pass
+        def login(self, u, p): assert u == "pager@example.com" and p == "apppassword"
+        def send_message(self, m): sent.append(m["Subject"])
+
+    async def ntfy_down(*a, **k):
+        raise RuntimeError("429 Too Many Requests")
+
+    monkeypatch.setattr(notifier.smtplib, "SMTP", FakeSMTP)
+    monkeypatch.setattr(notifier._http, "post", ntfy_down)
+    monkeypatch.setattr(notifier, "DRY_RUN", False)
+    monkeypatch.setattr(notifier, "SMTP_USER", "pager@example.com")
+    monkeypatch.setattr(notifier, "SMTP_PASSWORD", "apppassword")
+    monkeypatch.setattr(notifier, "EMAIL_TO", ["oncall@example.com"])
+    monkeypatch.setattr(notifier, "EMAIL_FROM", "pager@example.com")
+    monkeypatch.setattr(notifier, "NTFY_TOPIC", "t")
+    ok = asyncio.run(notifier._send({"title": "t", "message": "m"}))
+    assert ok == ["email"] and sent == ["t"]
+
+
+def test_delivery_fails_when_every_channel_fails(monkeypatch):
+    import asyncio
+    import pytest
+
+    async def ntfy_down(*a, **k):
+        raise RuntimeError("429")
+
+    monkeypatch.setattr(notifier, "DRY_RUN", False)
+    monkeypatch.setattr(notifier, "SMTP_PASSWORD", "")
+    monkeypatch.setattr(notifier, "NTFY_TOPIC", "t")
+    monkeypatch.setattr(notifier._http, "post", ntfy_down)
+    with pytest.raises(RuntimeError):
+        asyncio.run(notifier._send({"title": "t", "message": "m"}))

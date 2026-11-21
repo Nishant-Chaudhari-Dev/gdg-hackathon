@@ -73,10 +73,20 @@ When a ticket is **escalated** and mentions critical wording ("system crash", "p
 - **What's recorded:** the outcome is stored on the ticket (console badge "On-call paged") and in the audit log.
 - **Privacy:** only PII-masked text is sent. The ntfy topic name is the only secret: keep it out of git (`.env` locally, Secret Manager `ntfy-topic` on GCP).
 
-**Setup:**
-1. Install the ntfy app and subscribe to your topic.
-2. Deploy with `NTFY_TOPIC=<topic> ./infra/deploy.sh deploy`.
-3. To test without paging: `ALERTS_DRY_RUN=1`.
+**Channels:** email (recommended on Cloud Run) and/or ntfy push. A page counts as delivered if any channel works.
+ntfy.sh rate-limits Cloud Run's shared outbound IPs (HTTP 429), so use email for the hosted demo.
+
+**Email setup (Gmail, ~3 min, done by the account owner):**
+1. Create an App Password for the sending Gmail account (Google Account → Security → 2-Step Verification → App passwords). This needs 2-Step Verification.
+2. Store the three secrets yourself. The values never go into git or chat:
+   ```bash
+   printf %s "sender@gmail.com"            | gcloud secrets create smtp-user      --data-file=- --project $GCP_PROJECT
+   printf %s "<16-char app password>"      | gcloud secrets create smtp-password  --data-file=- --project $GCP_PROJECT
+   printf %s "oncall@example.com"          | gcloud secrets create alert-email-to --data-file=- --project $GCP_PROJECT
+   ```
+3. `./infra/deploy.sh deploy` picks the secrets up automatically.
+
+**ntfy (optional):** install the ntfy app, subscribe to your topic, and deploy once with `NTFY_TOPIC=<topic>`. To test without paging anyone, set `ALERTS_DRY_RUN=1`.
 
 ## Escalation gate (`gate-v2`)
 
