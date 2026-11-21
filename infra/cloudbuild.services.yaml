@@ -1,0 +1,31 @@
+# Builds all four Python service images in parallel and pushes to Artifact Registry.
+#   gcloud builds submit --config infra/cloudbuild.services.yaml --substitutions=_TAG=$(git rev-parse --short HEAD) .
+substitutions:
+  _REGION: us-central1
+  _REPO: sentinel
+  _TAG: latest
+options:
+  machineType: E2_HIGHCPU_8
+  logging: CLOUD_LOGGING_ONLY
+steps:
+  - id: gateway
+    name: gcr.io/cloud-builders/docker
+    waitFor: ["-"]
+    args: ["build", "-f", "services/gateway/Dockerfile", "-t", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/gateway:${_TAG}", "."]
+  - id: orchestrator
+    name: gcr.io/cloud-builders/docker
+    waitFor: ["-"]
+    args: ["build", "-f", "services/orchestrator/Dockerfile", "-t", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/orchestrator:${_TAG}", "."]
+  - id: ml
+    name: gcr.io/cloud-builders/docker
+    waitFor: ["-"]
+    args: ["build", "-f", "services/ml/Dockerfile", "-t", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/ml:${_TAG}", "."]
+  - id: rag
+    name: gcr.io/cloud-builders/docker
+    waitFor: ["-"]
+    args: ["build", "-f", "services/rag/Dockerfile", "-t", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/rag:${_TAG}", "."]
+images:
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/gateway:${_TAG}"
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/orchestrator:${_TAG}"
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/ml:${_TAG}"
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/rag:${_TAG}"

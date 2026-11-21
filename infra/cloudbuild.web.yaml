@@ -1,0 +1,14 @@
+# Builds the Next.js console with the gateway URL baked in.
+#   gcloud builds submit web --config infra/cloudbuild.web.yaml --substitutions=_API_URL=https://gateway-xxx.run.app
+substitutions:
+  _REGION: us-central1
+  _REPO: sentinel
+  _TAG: latest
+  _API_URL: ""
+options:
+  logging: CLOUD_LOGGING_ONLY
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "--build-arg", "NEXT_PUBLIC_API_URL=${_API_URL}", "-t", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/web:${_TAG}", "."]
+images:
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/web:${_TAG}"

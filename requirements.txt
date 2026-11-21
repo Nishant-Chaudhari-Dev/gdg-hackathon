@@ -1,9 +1,8 @@
-pandas
-numpy
-datasets
-scikit-learn
-sentence-transformers
-faiss-cpu
-langdetect
-streamlit
-python-dotenv
+# Dev convenience: everything needed to run all Python services + scripts locally.
+-e ./shared[gcp]
+-r services/gateway/requirements.txt
+-r services/orchestrator/requirements.txt
+-r services/ml/requirements.txt
+-r services/rag/requirements.txt
+datasets>=2.18
+pandas>=2.1

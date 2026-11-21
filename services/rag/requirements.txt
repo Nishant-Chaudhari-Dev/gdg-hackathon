@@ -1,0 +1,8 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pandas>=2.1
+scikit-learn>=1.4
+numpy>=1.26
+# RAG team: add these when switching to the agreed stack
+# google-cloud-aiplatform>=1.60
+# faiss-cpu>=1.8

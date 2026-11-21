@@ -23,3 +23,12 @@ Thumbs.db
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Data & artifacts (large / regenerated)
+data/*.csv
+research/**/artifacts/
+research/**/index/
+*.joblib
+*.faiss
+eval/results/*.json
+!eval/results/.gitkeep
