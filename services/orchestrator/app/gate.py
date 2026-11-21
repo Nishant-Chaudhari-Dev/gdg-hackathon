@@ -54,6 +54,16 @@ RISKY_TOPICS = {
 }
 MIN_BODY_CHARS = int(os.getenv("GATE_MIN_BODY_CHARS", "10"))
 
+# Safety net (ML team): obvious outage / security wording escalates even if the classifier under-rates priority.
+# Val: HP-incident escalation 87.6% -> 88.8% for +2.4 pts escalations; test (confirmed once): 86.2% -> 87.6%.
+KEYWORD_NET = os.getenv("GATE_KEYWORD_NET", "1") == "1"
+_OUTAGE = re.compile(
+    r"\b(outage|is down|are down|went down|offline|unreachable|not reachable|cannot access|can't access|unable to access|"
+    r"no access|breach|hacked|ransomware|malware|data leak|security incident|ausfall|ausgefallen|nicht erreichbar|"
+    r"kein zugriff|sicherheitsvorfall|datenleck|gehackt)\b",
+    re.I,
+)
+
 
 def _mentions(text: str, patterns: list[str]) -> bool:
     text = (text or "").lower()
@@ -94,6 +104,10 @@ def pre_draft(
         if cls.confidence < CFG.min_confidence:
             reasons.append(_r("LOW_CLASSIFIER_CONFIDENCE",
                               f"Classifier confidence {cls.confidence:.2f} < {CFG.min_confidence:.2f}"))
+
+    if KEYWORD_NET and _OUTAGE.search(text) and not any(r.code == "HIGH_PRIORITY_INCIDENT" for r in reasons):
+        reasons.append(_r("HIGH_PRIORITY_INCIDENT",
+                          "Outage/security wording detected (keyword safety net, independent of classifier labels)", "critical"))
 
     if ret is not None:
         if not ret.hits or ret.max_score < CFG.no_precedent:
@@ -141,4 +155,4 @@ def decide(reasons: list[EscalationReason]) -> EscalationDecision:
     escalate = any(r.severity in ("critical", "warning") for r in reasons)
     order = {"critical": 0, "warning": 1, "info": 2}
     return EscalationDecision(action="escalate" if escalate else "auto_draft",
-                              reasons=sorted(reasons, key=lambda r: order[r.severity]), rule_version="gate-v2")
+                              reasons=sorted(reasons, key=lambda r: order[r.severity]), rule_version="gate-v3")
