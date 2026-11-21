@@ -10,6 +10,4 @@ sentence-transformers>=3.0
 faiss-cpu>=1.8
 pyarrow>=15
 truststore>=0.9
-# Generator (Chitta): Gemini via google-genai (Vertex AI with ADC on Cloud Run, or GEMINI_API_KEY locally)
-google-genai>=1.0
-langdetect>=1.0.9
+# Generator (Chitta): add the Gemini client here, e.g. google-genai
