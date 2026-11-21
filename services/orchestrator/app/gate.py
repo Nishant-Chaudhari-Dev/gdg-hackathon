@@ -42,6 +42,29 @@ _SENSITIVE = re.compile(
 )
 
 
+# Ported from Edwin's src/escalation.py (eval/test_gate.py): a risky topic the customer raises
+# that NONE of the retrieved historical answers covers is unsupported -> human review.
+RISKY_TOPICS = {
+    "refund": [r"refund", r"reimburs", r"money back", r"erstattung", r"rückzahlung", r"geld zurück"],
+    "compensation": [r"compensat", r"entschädig"],
+    "pricing": [r"pric(e|ing)", r"discount", r"preis", r"rabatt"],
+    "guarantee/SLA": [r"guarantee", r"warrant(y|ies)", r"garantie", r"gewährleist", r"\bsla\b"],
+    "legal": [r"legal", r"lawsuit", r"lawyer", r"attorney", r"anwalt", r"klage"],
+    "cancellation": [r"cancel", r"kündig"],
+}
+MIN_BODY_CHARS = int(os.getenv("GATE_MIN_BODY_CHARS", "10"))
+
+
+def _mentions(text: str, patterns: list[str]) -> bool:
+    text = (text or "").lower()
+    return any(re.search(p, text) for p in patterns)
+
+
+def unsupported_topics(text: str, ret: RetrieveResponse | None) -> list[str]:
+    answers = " ".join(h.answer or "" for h in (ret.hits if ret else []))
+    return [t for t, pats in RISKY_TOPICS.items() if _mentions(text, pats) and not _mentions(answers, pats)]
+
+
 def _r(code, msg, sev="warning") -> EscalationReason:
     return EscalationReason(code=code, message=msg, severity=sev)
 
@@ -83,6 +106,14 @@ def pre_draft(
     if outage_id:
         reasons.append(_r("ACTIVE_OUTAGE", f"Part of active major incident {outage_id}", "critical"))
 
+    if len(text.strip()) < MIN_BODY_CHARS:
+        reasons.append(_r("INSUFFICIENT_DETAIL", f"Ticket text under {MIN_BODY_CHARS} characters; too little to assess"))
+
+    topics = unsupported_topics(text, ret)
+    if topics:
+        reasons.append(_r("UNSUPPORTED_REQUEST",
+                          "Asks about " + ", ".join(topics) + "; no retrieved precedent covers it"))
+
     if _SENSITIVE.search(text):
         reasons.append(_r("SENSITIVE_REQUEST", "Mentions refunds/legal/data-rights; reply must not promise outcomes", "info"))
 
@@ -110,4 +141,4 @@ def decide(reasons: list[EscalationReason]) -> EscalationDecision:
     escalate = any(r.severity in ("critical", "warning") for r in reasons)
     order = {"critical": 0, "warning": 1, "info": 2}
     return EscalationDecision(action="escalate" if escalate else "auto_draft",
-                              reasons=sorted(reasons, key=lambda r: order[r.severity]))
+                              reasons=sorted(reasons, key=lambda r: order[r.severity]), rule_version="gate-v2")

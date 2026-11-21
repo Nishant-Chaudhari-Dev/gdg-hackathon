@@ -50,7 +50,18 @@ data() {
   [[ -f data/kb_train.csv ]] || { echo "data/kb_train.csv missing: git pull (CSVs are committed) or python -m src.data_split"; exit 1; }
   gcloud storage cp data/kb_train.csv data/test_inputs.csv "gs://$BUCKET/data/"
   [[ -f research/ml/artifacts/model.joblib ]] && gcloud storage cp research/ml/artifacts/model.joblib "gs://$BUCKET/models/model.joblib" || true
-  [[ -d research/rag/index ]] && gcloud storage cp -r research/rag/index "gs://$BUCKET/" || true
+  # RAG index -> gs://$BUCKET/index/ (INDEX_URI). Prefer a full local build (bundled model, no HF download
+  # at startup); otherwise the committed single-file deploy index research/rag/index/kb_index.pkl.gz.
+  local idx=""
+  if [[ -f research/rag/artifacts/index/kb.faiss ]]; then idx=research/rag/artifacts/index
+  elif [[ -f research/rag/index/kb_index.pkl.gz ]]; then idx=research/rag/index; fi
+  if [[ -n $idx ]]; then
+    gcloud storage rm "gs://$BUCKET/index/**" >/dev/null 2>&1 || true   # no stale files from an older format
+    gcloud storage cp -r "$idx"/* "gs://$BUCKET/index/"
+    echo "RAG index uploaded from $idx"
+  else
+    echo "WARNING: no RAG index found; RAG will use its TF-IDF fallback"
+  fi
   echo "artifacts uploaded to gs://$BUCKET"
 }
 
@@ -69,12 +80,15 @@ deploy() {
   local common="GCP_PROJECT=$GCP_PROJECT,GCP_REGION=$REGION,USE_ID_TOKEN=1"
   local model_uri="research/ml/artifacts/model.joblib"
   gcloud storage ls "gs://$BUCKET/models/model.joblib" >/dev/null 2>&1 && model_uri="gs://$BUCKET/models/model.joblib"
+  # Gate thresholds: RAG values from research/rag/artifacts/index/calibration.json, ML from the val-split check.
+  local gate="GATE_MIN_CONFIDENCE=${GATE_MIN_CONFIDENCE:-0.50},GATE_MIN_RETRIEVAL=${GATE_MIN_RETRIEVAL:-0.87},GATE_NO_PRECEDENT=${GATE_NO_PRECEDENT:-0.841},GATE_MIN_GROUNDEDNESS=${GATE_MIN_GROUNDEDNESS:-0.35}"
   deploy_svc ml no  --cpu 2 --memory 4Gi --concurrency 20 --set-env-vars "$common,MODEL_URI=$model_uri"
-  deploy_svc rag no --cpu 2 --memory 8Gi --concurrency 20 --timeout 120 \
-    --set-env-vars "$common,KB_URI=gs://$BUCKET/data/kb_train.csv,INDEX_URI=gs://$BUCKET/index/,GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}"
+  # No GEMINI_MODEL override: the generator's own tested model chain applies unless GEN_MODELS is set.
+  deploy_svc rag no --cpu 2 --memory 8Gi --concurrency 20 --timeout 120 --cpu-boost \
+    --set-env-vars "$common,$gate,KB_URI=gs://$BUCKET/data/kb_train.csv,INDEX_URI=gs://$BUCKET/index/,TOKENIZERS_PARALLELISM=false${GEN_MODELS:+,GEN_MODELS=$GEN_MODELS}"
   local ML RAG; ML=$(url ml); RAG=$(url rag)
   deploy_svc orchestrator no --cpu 1 --memory 1Gi --timeout 300 \
-    --set-env-vars "$common,STORE=firestore,ML_URL=$ML,RAG_URL=$RAG"
+    --set-env-vars "$common,$gate,STORE=firestore,ML_URL=$ML,RAG_URL=$RAG"
   local ORCH; ORCH=$(url orchestrator)
   deploy_svc gateway yes --cpu 1 --memory 1Gi --timeout 3600 --concurrency 200 \
     --set-env-vars "$common,STORE=firestore,BUS=pubsub,PUBSUB_TOPIC=tickets,ORCHESTRATOR_URL=$ORCH,ML_URL=$ML,RAG_URL=$RAG,EVAL_REPORT_URI=gs://$BUCKET/eval/latest.json,SIM_TICKETS_URI=gs://$BUCKET/data/test_inputs.csv,INTERNAL_TOKEN=$INTERNAL_TOKEN"

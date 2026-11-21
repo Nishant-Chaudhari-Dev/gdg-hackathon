@@ -81,6 +81,7 @@ export const REASON_LABELS: Record<ReasonCode, string> = {
   PROMPT_INJECTION: "Prompt injection",
   ACTIVE_OUTAGE: "Active outage",
   PIPELINE_DEGRADED: "Pipeline degraded",
+  INSUFFICIENT_DETAIL: "Insufficient detail",
 };
 
 export function reasonLabel(code: string): string {

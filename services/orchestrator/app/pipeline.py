@@ -83,7 +83,8 @@ async def process(store: Store, msg: TicketMessage) -> dict:
         dreq = DraftRequest(subject=msg.subject, body=msg.body, language=msg.language, hits=ret.hits, classification=cls)
         d_raw, draft_ms, d_err = await _timed(lambda: rag.post("/draft", dreq.model_dump(mode="json")))
         if d_err:
-            reasons += gate.pre_draft("", None, None, None, ["rag-generation"])[0]
+            reasons.append(gate.EscalationReason(code="PIPELINE_DEGRADED", severity="critical",
+                                                 message="rag-generation unavailable; failing safe to human review"))
         else:
             draft = DraftResponse.model_validate(d_raw)
             reasons += gate.post_draft(draft)
