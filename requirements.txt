@@ -1,0 +1,9 @@
+pandas
+numpy
+datasets
+scikit-learn
+sentence-transformers
+faiss-cpu
+langdetect
+streamlit
+python-dotenv
