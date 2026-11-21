@@ -1,0 +1,368 @@
+{
+  "report": {
+    "n": 20,
+    "split": "kb val (leave-one-out: each ticket and its duplicates excluded from the index)",
+    "served_by": {
+      "gemini-3.5-flash-lite": 20
+    },
+    "mean_similarity_to_real_answer": {
+      "draft": 0.9525,
+      "top_precedent_copy": 0.9662,
+      "generic_reply": 0.8641
+    },
+    "draft_beats_generic_rate": 1.0,
+    "draft_vs_copy_win_rate": 0.15,
+    "mean_groundedness": 0.972,
+    "judge": {
+      "n": 20,
+      "coverage_full": 0.6,
+      "coverage_full_or_partial": 0.95,
+      "contradiction_rate": 0.05,
+      "judge_models": {
+        "gemini-3.5-flash-lite": 20
+      }
+    }
+  },
+  "rows": [
+    {
+      "ticket_id": "TKT-08564",
+      "lang": "en",
+      "model": "gemini-3.5-flash-lite",
+      "groundedness": 1.0,
+      "sim": {
+        "draft": 0.9878,
+        "top_precedent_copy": 0.9985,
+        "generic": 0.8282
+      },
+      "judge": {
+        "coverage": "full",
+        "contradicts": false,
+        "why": "The draft covers all the key resolution points and next steps present in the reference, including integration details, setup guides, documentation, support resources, and personalized assistance, without any contradictions.",
+        "judge_model": "gemini-3.5-flash-lite"
+      }
+    },
+    {
+      "ticket_id": "TKT-26181",
+      "lang": "de",
+      "model": "gemini-3.5-flash-lite",
+      "groundedness": 1.0,
+      "sim": {
+        "draft": 0.861,
+        "top_precedent_copy": 0.8962,
+        "generic": 0.8546
+      },
+      "judge": {
+        "coverage": "none",
+        "contradicts": true,
+        "why": "The reference states that security patches have already been installed, firewall settings reviewed, unauthorized access prevented, and an investigation conducted. In contrast, the draft states that measures will be taken immediately and asks the user for more details about suspicious behavior, which contradicts the completed actions in the reference.",
+        "judge_model": "gemini-3.5-flash-lite"
+      }
+    },
+    {
+      "ticket_id": "TKT-03668",
+      "lang": "en",
+      "model": "gemini-3.5-flash-lite",
+      "groundedness": 1.0,
+      "sim": {
+        "draft": 0.9749,
+        "top_precedent_copy": 0.9913,
+        "generic": 0.8497
+      },
+      "judge": {
+        "coverage": "full",
+        "contradicts": false,
+        "why": "The draft covers all the key points of the reference reply, including asking for configuration details, error messages, and offering to schedule a call at the customer's convenience.",
+        "judge_model": "gemini-3.5-flash-lite"
+      }
+    },
+    {
+      "ticket_id": "TKT-25118",
+      "lang": "en",
+      "model": "gemini-3.5-flash-lite",
+      "groundedness": 1.0,
+      "sim": {
+        "draft": 0.9214,
+        "top_precedent_copy": 0.9829,
+        "generic": 0.8799
+      },
+      "judge": {
+        "coverage": "full",
+        "contradicts": false,
+        "why": "The draft covers the key resolution step of reviewing system configurations and providing an assessment shortly, matching the reference.",
+        "judge_model": "gemini-3.5-flash-lite"
+      }
+    },
+    {
+      "ticket_id": "TKT-15703",
+      "lang": "de",
+      "model": "gemini-3.5-flash-lite",
+      "groundedness": 1.0,
+      "sim": {
+        "draft": 0.9193,
+        "top_precedent_copy": 0.9314,
+        "generic": 0.8807
+      },
+      "judge": {
+        "coverage": "partial",
+        "contradicts": false,
+        "why": "The draft acknowledges the concerns and asks for details about the current campaigns and target audience, similar to the reference. However, it misses the reference's offer to provide recommendations, tools, and techniques, as well as the specific request to schedule a phone call to discuss the details.",
+        "judge_model": "gemini-3.5-flash-lite"
+      }
+    },
+    {
+      "ticket_id": "TKT-02449",
+      "lang": "en",
+      "model": "gemini-3.5-flash-lite",
+      "groundedness": 1.0,
+      "sim": {
+        "draft": 0.9626,
+        "top_precedent_copy": 0.9837,
+        "generic": 0.8739
+      },
+      "judge": {
+        "coverage": "full",
+        "contradicts": false,
+        "why": "The draft covers all the key resolution points and next steps present in the reference, such as acknowledging the suggestion for investment optimization algorithms, stating that the team will review the feasibility, providing the 3-5 business days timeframe, and including contact instructions.",
+        "judge_model": "gemini-3.5-flash-lite"
+      }
+    },
+    {
+      "ticket_id": "TKT-08255",
+      "lang": "de",
+      "model": "gemini-3.5-flash-lite",
+      "groundedness": 1.0,
+      "sim": {
+        "draft": 0.9519,
+        "top_precedent_copy": 0.974,
+        "generic": 0.8807
+      },
+      "judge": {
+        "coverage": "full",
+        "contradicts": false,
+        "why": "The draft covers all key points of the reference, including acknowledging the critical outage report, asking for details on errors and updates, and proposing a phone call today to continue troubleshooting.",
+        "judge_model": "gemini-3.5-flash-lite"
+      }
+    },
+    {
+      "ticket_id": "TKT-28513",
+      "lang": "de",
+      "model": "gemini-3.5-flash-lite",
+      "groundedness": 0.8,
+      "sim": {
+        "draft": 0.9889,
+        "top_precedent_copy": 0.9315,
+        "generic": 0.8841
+      },
+      "judge": {
+        "coverage": "full",
+        "contradicts": false,
+        "why": "The draft covers all the key points of the reference reply, acknowledging the system outages, referencing the MySQL 8.0 update and rollback, and asking for specific error messages to aid in diagnosis, without contradicting the reference.",
+        "judge_model": "gemini-3.5-flash-lite"
+      }
+    },
+    {
+      "ticket_id": "TKT-09236",
+      "lang": "en",
+      "model": "gemini-3.5-flash-lite",
+      "groundedness": 1.0,
+      "sim": {
+        "draft": 0.9883,
+        "top_precedent_copy": 0.9988,
+        "generic": 0.8547
+      },
+      "judge": {
+        "coverage": "full",
+        "contradicts": false,
+        "why": "The draft covers all the key points of the reference by offering to discuss and resolve the integration problems via a call and asking for more details, with only minor additions like a ticket number and signature.",
+        "judge_model": "gemini-3.5-flash-lite"
+      }
+    },
+    {
+      "ticket_id": "TKT-22744",
+      "lang": "de",
+      "model": "gemini-3.5-flash-lite",
+      "groundedness": 1.0,
+      "sim": {
+        "draft": 0.9599,
+        "top_precedent_copy": 0.9812,
+        "generic": 0.8597
+      },
+      "judge": {
+        "coverage": "partial",
+        "contradicts": false,
+        "why": "The draft covers the main next steps of arranging a call and asking for the account number, but it slightly misinterprets the reference by asking the user to review a case study instead of asking for the account number so the agent can review the case.",
+        "judge_model": "gemini-3.5-flash-lite"
+      }
+    },
+    {
+      "ticket_id": "TKT-10709",
+      "lang": "de",
+      "model": "gemini-3.5-flash-lite",
+      "groundedness": 1.0,
+      "sim": {
+        "draft": 0.9378,
+        "top_precedent_copy": 0.932,
+        "generic": 0.8887
+      },
+      "judge": {
+        "coverage": "partial",
+        "contradicts": false,
+        "why": "The reference suggests calling the support team directly to discuss the issue. The draft asks for more details via email first, and only mentions a call as a secondary, optional step if necessary. Therefore, it misses the primary actionable step from the reference.",
+        "judge_model": "gemini-3.5-flash-lite"
+      }
+    },
+    {
+      "ticket_id": "TKT-13748",
+      "lang": "de",
+      "model": "gemini-3.5-flash-lite",
+      "groundedness": 1.0,
+      "sim": {
+        "draft": 0.9376,
+        "top_precedent_copy": 0.9483,
+        "generic": 0.8758
+      },
+      "judge": {
+        "coverage": "partial",
+        "contradicts": false,
+        "why": "The draft covers the core intent of addressing the digital marketing challenges and asking for more details, but it misses the reference's specific proposal to schedule a phone call to discuss the details.",
+        "judge_model": "gemini-3.5-flash-lite"
+      }
+    },
+    {
+      "ticket_id": "TKT-18695",
+      "lang": "en",
+      "model": "gemini-3.5-flash-lite",
+      "groundedness": 1.0,
+      "sim": {
+        "draft": 0.9792,
+        "top_precedent_copy": 0.9936,
+        "generic": 0.856
+      },
+      "judge": {
+        "coverage": "full",
+        "contradicts": false,
+        "why": "The draft covers all the key points of the reference reply, including acknowledging the issue, apologizing for the lag, asking for server configuration and optimization details, promising an investigation, and providing contact info for further discussion, with no contradictions.",
+        "judge_model": "gemini-3.5-flash-lite"
+      }
+    },
+    {
+      "ticket_id": "TKT-12775",
+      "lang": "en",
+      "model": "gemini-3.5-flash-lite",
+      "groundedness": 1.0,
+      "sim": {
+        "draft": 0.8865,
+        "top_precedent_copy": 0.9403,
+        "generic": 0.8382
+      },
+      "judge": {
+        "coverage": "partial",
+        "contradicts": false,
+        "why": "The draft acknowledges the server overload issue and apologizes, similar to the reference. However, the draft suggests clearing the browser cache, whereas the reference asks for more details and error messages to diagnose the problem during peak times.",
+        "judge_model": "gemini-3.5-flash-lite"
+      }
+    },
+    {
+      "ticket_id": "TKT-02464",
+      "lang": "en",
+      "model": "gemini-3.5-flash-lite",
+      "groundedness": 1.0,
+      "sim": {
+        "draft": 0.978,
+        "top_precedent_copy": 0.9854,
+        "generic": 0.8637
+      },
+      "judge": {
+        "coverage": "full",
+        "contradicts": false,
+        "why": "The draft covers all the key resolution steps and questions present in the reference reply, including acknowledging the issue, thanking them for the troubleshooting already done, asking for software update details, specific data discrepancies, error messages, and offering a call.",
+        "judge_model": "gemini-3.5-flash-lite"
+      }
+    },
+    {
+      "ticket_id": "TKT-05706",
+      "lang": "en",
+      "model": "gemini-3.5-flash-lite",
+      "groundedness": 1.0,
+      "sim": {
+        "draft": 0.9685,
+        "top_precedent_copy": 0.9814,
+        "generic": 0.8759
+      },
+      "judge": {
+        "coverage": "full",
+        "contradicts": false,
+        "why": "The draft covers all the key steps of the reference, including acknowledging the issue, asking for detailed information, and offering to schedule a call, with no contradictions.",
+        "judge_model": "gemini-3.5-flash-lite"
+      }
+    },
+    {
+      "ticket_id": "TKT-26506",
+      "lang": "en",
+      "model": "gemini-3.5-flash-lite",
+      "groundedness": 0.8,
+      "sim": {
+        "draft": 0.9817,
+        "top_precedent_copy": 0.9912,
+        "generic": 0.8732
+      },
+      "judge": {
+        "coverage": "full",
+        "contradicts": false,
+        "why": "The draft covers all the key steps of the reference, including acknowledging the request, asking for more details about data exchange synchronization to assess implementation, and mentioning a timeline, without any contradictory statements.",
+        "judge_model": "gemini-3.5-flash-lite"
+      }
+    },
+    {
+      "ticket_id": "TKT-05200",
+      "lang": "en",
+      "model": "gemini-3.5-flash-lite",
+      "groundedness": 1.0,
+      "sim": {
+        "draft": 0.9875,
+        "top_precedent_copy": 0.9927,
+        "generic": 0.8698
+      },
+      "judge": {
+        "coverage": "full",
+        "contradicts": false,
+        "why": "The draft covers all the key resolution points and next steps found in the reference, including mentioning billing cycles, payment methods, and asking for the account number for specific details, without contradicting any information.",
+        "judge_model": "gemini-3.5-flash-lite"
+      }
+    },
+    {
+      "ticket_id": "TKT-03606",
+      "lang": "en",
+      "model": "gemini-3.5-flash-lite",
+      "groundedness": 0.833,
+      "sim": {
+        "draft": 0.9319,
+        "top_precedent_copy": 0.907,
+        "generic": 0.8403
+      },
+      "judge": {
+        "coverage": "partial",
+        "contradicts": false,
+        "why": "The draft covers asking for details and specific error messages related to the indexing error, but it misses the reference's instructions to send the description to a specific account number and schedule a call via telephone.",
+        "judge_model": "gemini-3.5-flash-lite"
+      }
+    },
+    {
+      "ticket_id": "TKT-08145",
+      "lang": "en",
+      "model": "gemini-3.5-flash-lite",
+      "groundedness": 1.0,
+      "sim": {
+        "draft": 0.9449,
+        "top_precedent_copy": 0.9829,
+        "generic": 0.8548
+      },
+      "judge": {
+        "coverage": "partial",
+        "contradicts": false,
+        "why": "The draft offers to schedule a call and provide integration instructions, matching some of the reference's intent, but it fails to explicitly ask the user for details about their current setup and specific services, which was the primary key step requested by the reference.",
+        "judge_model": "gemini-3.5-flash-lite"
+      }
+    }
+  ]
+}
