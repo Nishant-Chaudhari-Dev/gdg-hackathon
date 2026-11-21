@@ -1,0 +1,66 @@
+{
+  "source_file": "aa_dataset-tickets-multi-lang-5-2-50-version.csv",
+  "seed": 42,
+  "rows_raw": 28587,
+  "rows_after_dropna": 28587,
+  "rows_after_dedup": 28572,
+  "kb": 22857,
+  "kb_train": 20571,
+  "kb_val": 2286,
+  "test": 5715,
+  "test_ids_sha1": "7ea508996356",
+  "label_share": {
+    "type": {
+      "kb": {
+        "Incident": 0.4011,
+        "Request": 0.2864,
+        "Problem": 0.2103,
+        "Change": 0.1022
+      },
+      "test": {
+        "Incident": 0.401,
+        "Request": 0.2864,
+        "Problem": 0.2103,
+        "Change": 0.1022
+      }
+    },
+    "queue": {
+      "kb": {
+        "Technical Support": 0.293,
+        "Product Support": 0.1838,
+        "Customer Service": 0.1485,
+        "IT Support": 0.1214,
+        "Billing and Payments": 0.0978,
+        "Returns and Exchanges": 0.0497,
+        "Service Outages and Maintenance": 0.04,
+        "Sales and Pre-Sales": 0.0317,
+        "Human Resources": 0.0193,
+        "General Inquiry": 0.0147
+      },
+      "test": {
+        "Technical Support": 0.291,
+        "Product Support": 0.1825,
+        "Customer Service": 0.1524,
+        "IT Support": 0.115,
+        "Billing and Payments": 0.0966,
+        "Returns and Exchanges": 0.0525,
+        "Service Outages and Maintenance": 0.0408,
+        "Sales and Pre-Sales": 0.0338,
+        "Human Resources": 0.0236,
+        "General Inquiry": 0.0119
+      }
+    },
+    "priority": {
+      "kb": {
+        "medium": 0.4028,
+        "high": 0.391,
+        "low": 0.2062
+      },
+      "test": {
+        "medium": 0.4028,
+        "high": 0.3911,
+        "low": 0.2061
+      }
+    }
+  }
+}
