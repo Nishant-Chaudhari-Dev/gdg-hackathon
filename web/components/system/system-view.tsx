@@ -48,7 +48,7 @@ const HEALTH_STYLE: Record<Health, { dot: string; label: string; ring: string }>
 function Node({ n, className }: { n: NodeSpec; className?: string }) {
   const h = HEALTH_STYLE[n.health];
   return (
-    <div className={cn("relative w-full rounded-xl border bg-card p-3 shadow-sm", h.ring, className)}>
+    <div className={cn("relative w-full rounded-md border bg-card p-3 shadow-sm", h.ring, className)}>
       <div className="flex items-center gap-2.5">
         <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-muted">
           <n.icon className="size-4 text-foreground/80" />
@@ -101,7 +101,7 @@ function Diagram({ sys, reachable }: { sys: SystemStatus | null; reachable: bool
   } satisfies Record<string, NodeSpec>;
 
   return (
-    <div className="rounded-xl border bg-[radial-gradient(circle_at_1px_1px,var(--border)_1px,transparent_0)] bg-[size:18px_18px] p-5">
+    <div className="rounded-md border bg-[radial-gradient(circle_at_1px_1px,var(--border)_1px,transparent_0)] bg-[size:18px_18px] p-5">
       <div className="flex flex-col items-stretch gap-2 xl:flex-row xl:items-center">
         <div className="xl:min-w-0 xl:flex-1"><Node n={nodes.browser} /></div>
         <Arrow label="HTTPS · SSE" />
@@ -144,7 +144,8 @@ export function SystemView() {
     <div className="space-y-5">
       <PageHeader
         title="System"
-        description="Architecture and live health of every SentinelDesk service."
+        crumb="Projects / SentinelDesk"
+        description="How a ticket flows through SentinelDesk's services, with live health for each one. Critical escalations go through the Notifier to the on-call phone."
         actions={
           <>
             {sys && (
@@ -163,7 +164,7 @@ export function SystemView() {
       {res.loading && !sys ? <Skeleton className="h-72 w-full" /> : <Diagram sys={sys} reachable={reachable} />}
       {sys && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px]">
-          <div className="overflow-hidden rounded-xl border bg-card">
+          <div className="overflow-hidden rounded-md border bg-card">
             <Table>
               <TableHeader className="bg-muted/40">
                 <TableRow className="hover:bg-transparent">
@@ -199,7 +200,7 @@ export function SystemView() {
               </TableBody>
             </Table>
           </div>
-          <div className="space-y-2 rounded-xl border bg-card p-4 text-xs">
+          <div className="space-y-2 rounded-md border bg-card p-4 text-xs">
             <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Runtime</div>
             <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
               <dt className="text-muted-foreground">Mode</dt>

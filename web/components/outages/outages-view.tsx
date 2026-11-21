@@ -17,6 +17,7 @@ import { cleanText, fmtAgo, fmtDateTime, fmtTime } from "@/lib/format";
 import { priorityStyle } from "@/lib/semantics";
 import { useLive, useOutageList } from "@/lib/store";
 import type { Outage } from "@/lib/types";
+import { useIssueNav } from "@/lib/use-issue-nav";
 import { cn } from "@/lib/utils";
 
 function duration(a: string, b: string) {
@@ -27,6 +28,7 @@ function duration(a: string, b: string) {
 
 function OutageCard({ outage }: { outage: Outage }) {
   const tickets = useLive((s) => s.tickets);
+  const { hrefFor } = useIssueNav();
   const now = useNow(15_000);
   const [busy, setBusy] = useState(false);
   const active = outage.status === "active";
@@ -51,12 +53,12 @@ function OutageCard({ outage }: { outage: Outage }) {
     <article
       id={outage.id}
       className={cn(
-        "scroll-mt-24 overflow-hidden rounded-xl border bg-card",
-        active ? "border-red-500/40 shadow-[0_0_0_1px_rgba(239,68,68,0.08),0_8px_30px_-12px_rgba(239,68,68,0.35)]" : "",
+        "scroll-mt-24 overflow-hidden rounded-md border bg-card",
+        active ? "border-l-4 border-l-[#c9372c]" : "",
       )}
     >
-      <div className={cn("flex flex-wrap items-start gap-3 border-b p-4", active && "bg-gradient-to-r from-red-500/[0.09] to-transparent")}>
-        <div className={cn("grid size-9 shrink-0 place-items-center rounded-lg", active ? "bg-red-600 text-white" : "bg-muted text-muted-foreground")}>
+      <div className={cn("flex flex-wrap items-start gap-3 border-b p-4", active && "bg-[#ffeceb]/60 dark:bg-[#42221f]/50")}>
+        <div className={cn("grid size-9 shrink-0 place-items-center rounded-md", active ? "bg-[#c9372c] text-white" : "bg-muted text-muted-foreground")}>
           {active ? <Siren className="size-4 animate-pulse" /> : <CheckCircle2 className="size-4" />}
         </div>
         <div className="min-w-0 flex-1">
@@ -103,7 +105,7 @@ function OutageCard({ outage }: { outage: Outage }) {
         </div>
       </div>
       <div className="p-4">
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Timeline of linked tickets</div>
+        <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Linked tickets (oldest first) — click to open</div>
         {linked.length === 0 ? (
           <p className="text-xs text-muted-foreground">No tickets linked yet.</p>
         ) : (
@@ -116,7 +118,7 @@ function OutageCard({ outage }: { outage: Outage }) {
                     t ? priorityStyle(t.classification?.priority.label).dot : "bg-muted-foreground",
                   )}
                 />
-                <Link href={`/queue?ticket=${encodeURIComponent(id)}`} className="group flex flex-wrap items-center gap-2 rounded-md px-1.5 py-1 hover:bg-muted/50">
+                <Link href={hrefFor(id)} scroll={false} className="group flex flex-wrap items-center gap-2 rounded-md px-1.5 py-1 hover:bg-muted/50">
                   <span className="tabular w-16 text-xs text-muted-foreground">{t ? fmtTime(t.created_at) : "—"}</span>
                   {t && <LangBadge lang={t.language} />}
                   <span className="min-w-0 flex-1 truncate text-[13px] group-hover:underline">{(t && (cleanText(t.subject) || cleanText(t.body).slice(0, 80))) || <span className="font-mono text-xs">{id}</span>}</span>
@@ -146,8 +148,9 @@ export function OutagesView() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Outages"
-        description="Clusters of tickets sharing a failure signature are promoted to a major incident automatically."
+        title="Major incidents"
+        crumb="Projects / SentinelDesk"
+        description="When several tickets describe the same failure within a few minutes, SentinelDesk groups them into one major incident (outage) so the team fixes it once."
       />
       {gw.down && outages.length === 0 ? (
         <GatewayOffline message={gw.error} />
@@ -157,7 +160,7 @@ export function OutagesView() {
           <Skeleton className="h-40 w-full" />
         </div>
       ) : outages.length === 0 ? (
-        <EmptyState icon={CheckCircle2} title="No outages detected" description="All systems nominal. Try “Simulate traffic → Outage storm” on the Queue page." />
+        <EmptyState icon={CheckCircle2} title="No major incidents" description="All systems normal. To see one, use Simulate traffic → Outage storm on the Board." />
       ) : (
         <>
           <section className="space-y-3">
