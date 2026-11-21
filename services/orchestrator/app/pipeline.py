@@ -63,13 +63,14 @@ async def process(store: Store, msg: TicketMessage) -> dict:
     degraded = [n for n, e in (("ml-service", cls_err), ("rag-retrieval", ret_err)) if e]
 
     tg = time.perf_counter()
-    sig = burst.signature(msg.subject, msg.body, ret)
+    # Only incident-like tickets can form or join an outage; others get no signature at all.
+    incident_like = cls is None or cls.type.label in ("Incident", "Problem") or cls.priority.label in ("high", "critical")
+    sig = burst.signature(msg.subject, msg.body, ret) if incident_like else []
     outage = None
     try:
-        # Publish signature early so concurrent tickets in a burst can see each other.
-        await store.update_ticket(msg.ticket_id, {"signature": sig})
-        incident_like = cls is None or cls.type.label in ("Incident", "Problem") or cls.priority.label in ("high", "critical")
-        if incident_like:
+        if sig:
+            # Publish signature early so concurrent tickets in a burst can see each other.
+            await store.update_ticket(msg.ticket_id, {"signature": sig})
             outage = await burst.detect(store, msg.ticket_id, sig, cls.queue.label if cls else None)
     except Exception as e:  # noqa: BLE001
         log.warning("burst detection failed: %r", e)
