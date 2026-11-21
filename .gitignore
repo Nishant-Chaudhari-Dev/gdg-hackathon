@@ -29,5 +29,5 @@ research/**/artifacts/
 research/**/index/
 *.joblib
 *.faiss
-eval/results/*.json
-!eval/results/.gitkeep
+eval/results/latest.json
+artifacts/
