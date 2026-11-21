@@ -24,7 +24,8 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="SentinelDesk RAG service", lifespan=lifespan)
 
 
-@app.get("/healthz", response_model=ServiceInfo)
+@app.get("/healthz", response_model=ServiceInfo)  # local; Cloud Run reserves paths ending in "z"
+@app.get("/health", response_model=ServiceInfo)
 def healthz() -> ServiceInfo:
     return ServiceInfo(service="rag", version=f"{retriever.version}+{generator.model}",
                        details={"retriever": retriever.version, "generator": generator.model})

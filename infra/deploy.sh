@@ -10,6 +10,7 @@
 #   web (public) -> gateway (public) --Pub/Sub topic `tickets`--> orchestrator (private, push w/ OIDC)
 #   orchestrator -> ml (private), rag (private, Vertex AI)  ; all state in Firestore ; artifacts in GCS
 set -euo pipefail
+export CLOUDSDK_CORE_DISABLE_PROMPTS=1  # never block on y/N prompts
 
 : "${GCP_PROJECT:?set GCP_PROJECT}"
 REGION="${GCP_REGION:-us-central1}"
