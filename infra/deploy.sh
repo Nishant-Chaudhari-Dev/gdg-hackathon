@@ -94,13 +94,19 @@ deploy() {
     gc secrets describe ntfy-topic >/dev/null 2>&1 || gc secrets create ntfy-topic --replication-policy automatic
     printf %s "$NTFY_TOPIC" | gc secrets versions add ntfy-topic --data-file=- >/dev/null
   fi
+  # Email channel secrets are created by the user (see README "On-call paging"): smtp-user, smtp-password, alert-email-to.
   local WEB; WEB=$(url web 2>/dev/null || true)
-  if gc secrets describe ntfy-topic >/dev/null 2>&1; then
+  local secrets=""
+  gc secrets describe ntfy-topic >/dev/null 2>&1 && secrets+="NTFY_TOPIC=ntfy-topic:latest,"
+  if gc secrets describe smtp-password >/dev/null 2>&1; then
+    secrets+="SMTP_USER=smtp-user:latest,SMTP_PASSWORD=smtp-password:latest,ALERT_EMAIL_TO=alert-email-to:latest,"
+  fi
+  if [[ -n $secrets ]]; then
     deploy_svc notifier no --cpu 1 --memory 512Mi --max-instances 1 \
-      --set-secrets "NTFY_TOPIC=ntfy-topic:latest" \
-      --set-env-vars "$common,STORE=firestore,CONSOLE_URL=$WEB,ALERT_COOLDOWN_S=${ALERT_COOLDOWN_S:-300},ALERT_DAILY_CAP=${ALERT_DAILY_CAP:-20},INTERNAL_TOKEN=$INTERNAL_TOKEN"
+      --set-secrets "${secrets%,}" \
+      --set-env-vars "$common,STORE=firestore,CONSOLE_URL=$WEB,ALERT_CHANNELS=${ALERT_CHANNELS:-email,ntfy},ALERT_COOLDOWN_S=${ALERT_COOLDOWN_S:-300},ALERT_DAILY_CAP=${ALERT_DAILY_CAP:-20},INTERNAL_TOKEN=$INTERNAL_TOKEN"
   else
-    echo "WARNING: no ntfy-topic secret (set NTFY_TOPIC=...); notifier not deployed, on-call paging off"
+    echo "WARNING: no alert channel secrets (smtp-password or ntfy-topic); notifier not deployed, on-call paging off"
   fi
   local NOTIF; NOTIF=$(url notifier 2>/dev/null || true)
   local ORCH; ORCH=$(url orchestrator)

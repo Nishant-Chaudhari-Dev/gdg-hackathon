@@ -173,7 +173,7 @@ class PagingInfo(BaseModel):
     """On-call paging outcome for a ticket (set by the notifier service)."""
     state: Literal["sent", "rate_limited", "failed"]
     at: datetime = Field(default_factory=utcnow)
-    channel: str = "ntfy"
+    channel: str = "email"
     keywords: list[str] = Field(default_factory=list)
     detail: str | None = None
 
