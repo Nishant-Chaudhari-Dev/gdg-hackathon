@@ -31,3 +31,6 @@ research/**/index/
 *.faiss
 eval/results/latest.json
 artifacts/
+
+# Claude Code agent worktrees (local only)
+.claude/worktrees/
