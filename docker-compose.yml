@@ -1,7 +1,7 @@
 # Full SentinelDesk stack locally, zero GCP credentials needed (LOCAL_MODE).
 #   docker compose up --build
 #   console: http://localhost:3000   gateway: http://localhost:8080/docs
-# ML/RAG read ./data and ./research from the host, so `python scripts/data_split.py`
+# ML/RAG read ./data and ./research from the host, so the committed split (data/*.csv)
 # and `python scripts/train_baseline.py` immediately upgrade the stubs (restart the service).
 x-py: &py
   restart: unless-stopped

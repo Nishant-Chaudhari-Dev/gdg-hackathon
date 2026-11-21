@@ -46,7 +46,7 @@ setup() {
 }
 
 data() {
-  [[ -f data/kb_train.csv ]] || { echo "run: python scripts/data_split.py"; exit 1; }
+  [[ -f data/kb_train.csv ]] || { echo "data/kb_train.csv missing: git pull (CSVs are committed) or python -m src.data_split"; exit 1; }
   gcloud storage cp data/kb_train.csv data/test_inputs.csv "gs://$BUCKET/data/"
   [[ -f research/ml/artifacts/model.joblib ]] && gcloud storage cp research/ml/artifacts/model.joblib "gs://$BUCKET/models/model.joblib" || true
   [[ -d research/rag/index ]] && gcloud storage cp -r research/rag/index "gs://$BUCKET/" || true

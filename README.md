@@ -16,7 +16,8 @@ services/
   ml/                   /classify            ← ML team: app/model.py
   rag/                  /retrieve, /draft    ← RAG team: app/retriever.py, app/generator.py
 shared/sentinel_core/   pydantic schemas (THE contract), PII masking, lang detect, store, HTTP helpers
-scripts/                data_split.py (canonical 80/20), train_baseline.py
+src/data_split.py       canonical leakage-safe split (team-owned); data/*.csv committed
+scripts/                train_baseline.py, smoke_test.py
 eval/                   evaluate.py → eval/results/latest.json (rendered in the console)
 infra/                  deploy.sh (GCP one-shot), Cloud Build configs
 research/{ml,rag}/      notebooks, training & index-building code, local artifacts (gitignored)
@@ -25,7 +26,7 @@ research/{ml,rag}/      notebooks, training & index-building code, local artifac
 ## Quick start (local, no GCP needed)
 
 ```bash
-python scripts/data_split.py          # needs `pip install datasets pandas`; writes data/*.csv (gitignored)
+python eval/verify_split.py           # data/*.csv is committed; all checks should PASS
 docker compose up --build             # ml, rag, orchestrator, gateway, web
 open http://localhost:3000
 ```
@@ -82,4 +83,4 @@ python eval/evaluate.py --ml-url $(gcloud run services describe ml --region us-c
 Any critical or warning reason → **Escalate to On-Call Engineer**; otherwise → **Auto-Draft Ready**.
 
 ## Data & fair play
-Split is fixed (seed 42, 80/20) by `scripts/data_split.py`. Only `kb_train.csv` is used for training and indexing. `test.csv` labels are read only by `eval/evaluate.py` for scoring, and the simulator replays `test_inputs.csv` (subject/body only). Dataset: [Tobi-Bueck/customer-support-tickets](https://huggingface.co/datasets/Tobi-Bueck/customer-support-tickets) (CC-BY-NC-4.0).
+Split is fixed by `src/data_split.py`: one pinned source file (`aa_dataset-tickets-multi-lang-5-2-50-version.csv`), rows without labels dropped, bodies de-duplicated **before** splitting, stratified 80/20 (seed 42), 10% of KB marked `split=val` for threshold tuning. `eval/verify_split.py` proves no KB/test overlap. Only `kb_train.csv` is used for training and indexing. `test.csv` labels are read only by `eval/evaluate.py` for scoring, and the simulator replays `test_inputs.csv` (subject/body only). Dataset: [Tobi-Bueck/customer-support-tickets](https://huggingface.co/datasets/Tobi-Bueck/customer-support-tickets) (CC-BY-NC-4.0).

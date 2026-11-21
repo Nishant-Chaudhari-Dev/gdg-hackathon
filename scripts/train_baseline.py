@@ -22,9 +22,12 @@ OUT = os.getenv("MODEL_OUT", "research/ml/artifacts/model.joblib")
 
 def main() -> None:
     if not os.path.exists(KB):
-        sys.exit(f"{KB} not found. Run: python scripts/data_split.py")
+        sys.exit(f"{KB} not found. Run: python -m src.data_split")
     df = pd.read_csv(KB)
     df = df.dropna(subset=["body", "type", "queue", "priority"])
+    if "split" in df.columns:  # team split: fit on train, keep val for threshold tuning
+        df = df[df["split"] == "train"]
+    print(f"training rows: {len(df)}")
     text = (df["subject"].fillna("") + "\n" + df["body"].fillna("")).tolist()
     t0 = time.time()
     vec = TfidfVectorizer(ngram_range=(1, 2), min_df=2, max_features=200_000, sublinear_tf=True)

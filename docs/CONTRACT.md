@@ -22,7 +22,7 @@ Everything already runs end-to-end today with **stub implementations** (keyword 
 
 ## 1. Ground rules (both teams)
 
-1. **One split for everyone.** Run `python scripts/data_split.py` (seed 42, from the problem statement). It writes `data/kb_train.csv` (80%), `data/test.csv` (20%, labels, used by eval only) and `data/test_inputs.csv` (20%, subject/body only). Don't make your own split or the metrics won't be comparable.
+1. **One split for everyone: already committed.** `data/kb_train.csv` (80%, with a `split` column: `train` 20,571 / `val` 2,286), `data/test.csv` (20% = 5,715, labels, used by eval only), `data/test_inputs.csv` (subject/body only). Produced by `src/data_split.py`, checked by `python eval/verify_split.py`. **Train on `split==train`, tune thresholds and calibration on `split==val`, never on test.** RAG indexes all of `kb_train.csv`. Don't make your own split or the metrics won't be comparable.
 2. **Zero leakage (disqualification risk).** Never train on, index, or look at `test.csv` labels or `answer`. The RAG index is built from `kb_train.csv` only. Hyper-param tuning: carve a validation set out of `kb_train`.
 3. **Inputs are PII-masked.** The gateway replaces emails, phones, IPs, IBANs, cards and account ids with tokens like `[EMAIL]`, `[PHONE]`, `[IPV4]`. Your models see masked text. Keep the tokens as-is in drafts.
 4. **Subject can be empty** (`""`). Body can be long (gateway truncates to 8000 chars), German or English, or garbage. **Never raise.** Return low confidence and let the gate escalate.
@@ -31,11 +31,21 @@ Everything already runs end-to-end today with **stub implementations** (keyword 
 7. **Ticket ids:** KB tickets are `TKT-00000`…`TKT-49xxx` (from the split). Live tickets are `LIVE-XXXXXXXX`. Only ever cite `TKT-` ids that you actually retrieved.
 8. **Services must be stateless** and load artifacts at startup from a GCS URI (env var), because Cloud Run can run several instances and restart them anytime.
 
-### 1a. Data gotchas (measured on the canonical split, read before training)
-`load_dataset("Tobi-Bueck/customer-support-tickets")` concatenates **several dataset versions** (61,765 rows; `version` ∈ {NaN, 400, 52, 51}):
+### 1a. Data facts (team split, see `data/split_manifest.json`)
+The split uses **one pinned file** (`aa_dataset-tickets-multi-lang-5-2-50-version.csv`, 28,587 rows). Mixing dataset versions via `load_dataset(...)` would add 52 queues, 5 priorities and ~22% KB↔test duplicates, so don't do that.
 
-| Finding | Numbers (kb_train) | Implication |
-|---|---|---|
+| Fact | Implication |
+|---|---|
+| 28,572 rows after body de-dup; KB 22,857 / test 5,715 | `verify_split.py` guarantees no body overlap KB↔test |
+| Labels: 4 types, **10 queues**, **3 priorities** (high 39%, medium 40%, low 21%), no nulls | matches `schemas.QUEUES` / `PRIORITIES` |
+| Stratified on type\|priority | val/test label shares match train |
+| `data/test_near_dup_ids.csv` | test tickets with near-duplicates in KB: report metrics with and without them if asked |
+| Some `subject` null; text has literal `\n` sequences | model must handle `""`; use `sentinel_core.text.clean()` |
+| Language: majority German | test German first |
+
+Baseline (TF-IDF+LR trained on `split==train`) on the full holdout: see the Metrics page / `eval/results/latest.json` after `python eval/evaluate.py`.
+
+---|---|---|
 | `type` is null | 10,593 rows | drop those rows for the type head (the baseline does `dropna(type)`) |
 | `priority` has 5 values | high/medium/low **+ critical 1,538, very_low 1,446** | those rows are exactly the null-`type` rows; after `dropna(type)` you have the 3 official classes. The gate treats `critical` as high anyway. |
 | `queue` has **52** values | 10 official queues + 42 "Topic/Subtopic" queues (~250 rows each) from another version | decide: drop them, or map to the 10 official queues |
@@ -197,7 +207,7 @@ class Generator:
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -e shared -r services/ml/requirements.txt -r services/rag/requirements.txt datasets
-python scripts/data_split.py                     # once
+python eval/verify_split.py                      # data/*.csv is committed; all checks PASS
 cd services/ml  && uvicorn app.main:app --port 8001 --reload     # ML team
 cd services/rag && uvicorn app.main:app --port 8002 --reload     # RAG team
 
