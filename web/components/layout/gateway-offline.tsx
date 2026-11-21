@@ -35,7 +35,7 @@ export function GatewayOffline({
     );
   }
   return (
-    <div className={cn("flex flex-col items-center justify-center rounded-xl border border-red-500/25 bg-red-500/[0.04] px-6 py-12 text-center", className)}>
+    <div className={cn("flex flex-col items-center justify-center rounded-md border border-red-500/25 bg-red-500/[0.04] px-6 py-12 text-center", className)}>
       <div className="grid size-11 place-items-center rounded-full bg-red-500/10">
         <WifiOff className="size-5 text-red-500" />
       </div>

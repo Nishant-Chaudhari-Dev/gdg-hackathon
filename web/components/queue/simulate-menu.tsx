@@ -27,7 +27,7 @@ export function SimulateMenu() {
     setBusy(true);
     try {
       const r = await api.simulate({ scenario });
-      toast.success(`Simulating ${r.started} tickets`, { description: `Scenario: ${r.scenario} — watch them stream in.` });
+      toast.success(`Simulating ${r.started} tickets`, { description: `Scenario: ${r.scenario} — watch them land on the board.` });
     } catch (e) {
       toast.error("Simulation failed", { description: errorMessage(e) });
     } finally {
@@ -36,12 +36,12 @@ export function SimulateMenu() {
   };
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button size="sm" variant="outline" disabled={busy} />}>
+      <DropdownMenuTrigger render={<Button variant="secondary" disabled={busy} title="Stream in a burst of realistic demo tickets" />}>
         <Zap className="text-amber-500" /> Simulate traffic <ChevronDown className="opacity-60" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuGroup>
-          <DropdownMenuLabel>Scenario</DropdownMenuLabel>
+          <DropdownMenuLabel>Stream in demo tickets</DropdownMenuLabel>
           {SCENARIOS.map((s) => (
             <DropdownMenuItem key={s.value} onClick={() => void start(s.value)} className="items-start py-1.5">
               <s.icon className="mt-0.5" />

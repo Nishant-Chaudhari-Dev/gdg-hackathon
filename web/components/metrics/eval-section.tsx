@@ -86,7 +86,7 @@ function EvalBody({ r }: { r: EvalReport }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.3fr_1fr_1fr_1fr]">
-        <div className="relative overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-br from-primary/[0.12] via-primary/[0.04] to-transparent p-4">
+        <div className="relative overflow-hidden rounded-md border border-primary/30 bg-gradient-to-br from-primary/[0.12] via-primary/[0.04] to-transparent p-4">
           <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary">
             <Target className="size-3.5" /> High-priority incident recall
           </div>

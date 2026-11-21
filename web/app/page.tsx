@@ -1,5 +1,13 @@
-import { ConsoleView } from "@/components/ticket/console-view";
+import type { Metadata } from "next";
+import { Suspense } from "react";
+import { BoardView } from "@/components/board/board-view";
 
-export default function ConsolePage() {
-  return <ConsoleView />;
+export const metadata: Metadata = { title: "Board" };
+
+export default function BoardPage() {
+  return (
+    <Suspense>
+      <BoardView />
+    </Suspense>
+  );
 }

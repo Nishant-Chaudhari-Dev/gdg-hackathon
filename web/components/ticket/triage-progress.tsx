@@ -31,7 +31,7 @@ export function TriageProgress({ startedAt }: { startedAt: number }) {
   }
 
   return (
-    <div className="rounded-xl border bg-card p-5">
+    <div className="rounded-md">
       <div className="flex items-center justify-between">
         <div>
           <div className="text-sm font-semibold">Triaging ticket…</div>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bot, ChevronRight, RefreshCw, ScrollText, Search } from "lucide-react";
+import { ChevronRight, RefreshCw, ScrollText, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -12,36 +12,30 @@ import { EmptyState } from "@/components/layout/empty-state";
 import { GatewayOffline, useGatewayDown } from "@/components/layout/gateway-offline";
 import { PageHeader } from "@/components/layout/page-header";
 import { FilterSelect } from "@/components/queue/filter-select";
+import { Avatar, isSystemActor } from "@/components/jira/primitives";
+import { describeAction } from "@/components/issue/activity-feed";
 import { useNow } from "@/hooks/use-now";
 import { api, errorMessage } from "@/lib/api";
 import { fmtAgo, fmtDateTime } from "@/lib/format";
 import { useLive } from "@/lib/store";
 import type { AuditEvent } from "@/lib/types";
+import { useIssueNav } from "@/lib/use-issue-nav";
 import { cn } from "@/lib/utils";
 
-const SYSTEM_ACTORS = new Set(["pipeline", "detector", "system", "orchestrator", "gateway", "simulator"]);
-
 function actionTone(action: string) {
-  if (/approve|resolved|auto_draft/.test(action)) return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
-  if (/reject|fail|error|outage\.opened|escalat/.test(action)) return "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300";
-  if (/override|acknowledge/.test(action)) return "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300";
-  if (/edit/.test(action)) return "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300";
-  return "border-border bg-muted/60 text-muted-foreground";
+  if (/approve|resolved|auto_draft/.test(action)) return "bg-[#baf3db] text-[#216e4e] dark:bg-[#164b35] dark:text-[#7ee2b8]";
+  if (/reject|fail|error|outage[.:]opened|escalat/.test(action)) return "bg-[#ffd5d2] text-[#ae2e24] dark:bg-[#5d1f1a] dark:text-[#fd9891]";
+  if (/override|acknowledge/.test(action)) return "bg-[#f8e6a0] text-[#7f5f01] dark:bg-[#533f04] dark:text-[#f5cd47]";
+  if (/edit/.test(action)) return "bg-[#cce0ff] text-[#0055cc] dark:bg-[#09326c] dark:text-[#85b8ff]";
+  return "bg-muted text-muted-foreground";
 }
 
 function Actor({ name }: { name: string }) {
-  const sys = SYSTEM_ACTORS.has(name.toLowerCase());
+  const sys = isSystemActor(name);
   return (
-    <span className="inline-flex items-center gap-2">
-      <span
-        className={cn(
-          "grid size-5 place-items-center rounded-full text-[9px] font-bold uppercase",
-          sys ? "bg-muted text-muted-foreground" : "bg-primary/15 text-primary",
-        )}
-      >
-        {sys ? <Bot className="size-3" /> : name.slice(0, 2)}
-      </span>
-      <span className={cn("text-xs", sys ? "text-muted-foreground" : "font-medium")}>{name}</span>
+    <span className="inline-flex min-w-0 items-center gap-2">
+      <Avatar name={name} size="sm" />
+      <span className={cn("truncate text-xs", sys ? "text-muted-foreground" : "font-medium")}>{name}</span>
     </span>
   );
 }
@@ -69,6 +63,7 @@ function Details({ details }: { details: Record<string, unknown> }) {
 
 export function AuditView() {
   const audit = useLive((s) => s.audit);
+  const { hrefFor } = useIssueNav();
   const gw = useGatewayDown();
   const now = useNow(15_000);
   const [q, setQ] = useState("");
@@ -101,7 +96,8 @@ export function AuditView() {
     <div className="space-y-4">
       <PageHeader
         title="Audit log"
-        description="Every pipeline decision and human action, append-only. New events stream in live."
+        crumb="Projects / SentinelDesk"
+        description="Every AI decision and every human action, in order. Nothing is ever deleted; new events stream in live."
         actions={
           <Button size="sm" variant="outline" onClick={refresh} disabled={refreshing}>
             <RefreshCw className={cn(refreshing && "animate-spin")} /> Refresh
@@ -125,15 +121,15 @@ export function AuditView() {
           ))}
         </div>
       ) : rows.length === 0 ? (
-        <EmptyState icon={ScrollText} title="No audit events" description="Actions taken in the console will appear here." />
+        <EmptyState icon={ScrollText} title="No audit events yet" description="Create a ticket or simulate traffic — every AI decision and operator action will be recorded here." />
       ) : (
-        <div className="overflow-hidden rounded-xl border bg-card">
-          <Table className="table-fixed">
-            <TableHeader className="bg-muted/40">
+        <div className="overflow-x-auto rounded-md border bg-card">
+          <Table className="min-w-[860px] table-fixed">
+            <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="h-8 w-40 text-[11px] uppercase tracking-wider">Time</TableHead>
                 <TableHead className="h-8 w-36 text-[11px] uppercase tracking-wider">Actor</TableHead>
-                <TableHead className="h-8 w-44 text-[11px] uppercase tracking-wider">Action</TableHead>
+                <TableHead className="h-8 w-56 text-[11px] uppercase tracking-wider">What happened</TableHead>
                 <TableHead className="h-8 w-40 text-[11px] uppercase tracking-wider">Ticket</TableHead>
                 <TableHead className="h-8 text-[11px] uppercase tracking-wider">Details</TableHead>
               </TableRow>
@@ -149,11 +145,12 @@ export function AuditView() {
                     <Actor name={a.actor} />
                   </TableCell>
                   <TableCell className="py-2">
-                    <span className={cn("inline-flex h-5 items-center rounded-md border px-1.5 font-mono text-[10.5px]", actionTone(a.action))}>{a.action}</span>
+                    <div className="text-xs leading-snug">{describeAction(a.action)}</div>
+                    <span className={cn("mt-0.5 inline-flex h-[18px] items-center rounded-[3px] px-1 font-mono text-[10px]", actionTone(a.action))}>{a.action}</span>
                   </TableCell>
                   <TableCell className="py-2">
                     {a.ticket_id ? (
-                      <Link href={`/queue?ticket=${encodeURIComponent(a.ticket_id)}`} className="truncate font-mono text-[11px] text-primary hover:underline">
+                      <Link href={hrefFor(a.ticket_id)} scroll={false} className="truncate font-mono text-[11px] text-primary hover:underline">
                         {a.ticket_id}
                       </Link>
                     ) : (

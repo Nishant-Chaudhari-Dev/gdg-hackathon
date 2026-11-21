@@ -272,7 +272,16 @@ const rnd = (a: number, b: number) => Math.round(a + Math.random() * (b - a));
 let seq = 0;
 function newTicketId(): string {
   seq += 1;
-  return `t_${Date.now().toString(36)}${seq.toString(36).padStart(2, "0")}`;
+  // Same shape as the real gateway: LIVE-<8 hex>.
+  const hex = ((Date.now() * 31 + seq * 7919) % 0xffffffff).toString(16).toUpperCase().padStart(8, "0").slice(-8);
+  return `LIVE-${hex}`;
+}
+
+/** Stable id for seeded tickets so deep links survive a page reload in mock mode. */
+function seedId(key: string): string {
+  let h = 2166136261;
+  for (const ch of key) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
+  return `LIVE-${h.toString(16).toUpperCase().padStart(8, "0")}`;
 }
 
 interface BuildOpts {
@@ -314,6 +323,10 @@ function buildTicket(o: BuildOpts): TicketRecord {
     language, classification: cls, retrieval: ret, draft, decision, signature,
     outage_id: outage?.id ?? null, timings_ms: timings, latency_ms: timings.total, error: null,
     human: { state: "pending", final_reply: null, override: null, note: null, by: null, at: null, ...o.human },
+    // Critical escalations page the on-call engineer (mirrors the notifier service).
+    paging: decision.reasons.some((r) => r.severity === "critical")
+      ? { state: "sent", at: done, channel: "ntfy", keywords: signature.slice(0, 4), detail: "Push sent to on-call phone" }
+      : null,
   };
 }
 
@@ -409,13 +422,13 @@ function init(): State {
   state.outages.set(resolved.id, resolved);
 
   const add = (key: keyof typeof SEED_TEXTS, minsAgo: number, extra: Partial<BuildOpts> = {}, source = "email") => {
-    const t = buildTicket({ ...SEED_TEXTS[key], createdAt: now - minsAgo * min, source, ...extra });
+    const t = buildTicket({ ...SEED_TEXTS[key], createdAt: now - minsAgo * min, source, id: seedId(key), ...extra });
     state!.tickets.set(t.id, t);
     linkToOutage(t);
     return t;
   };
 
-  const api502 = buildTicket({ ...SEED_TEXTS.api, createdAt: now - 170 * min, source: "email", human: { state: "acknowledged", by: "priya", at: new Date(now - 165 * min).toISOString() } });
+  const api502 = buildTicket({ ...SEED_TEXTS.api, id: seedId("api502"), createdAt: now - 170 * min, source: "email", human: { state: "acknowledged", by: "priya", at: new Date(now - 165 * min).toISOString() } });
   state.tickets.set(api502.id, { ...api502, outage_id: resolved.id });
   state.outages.set(resolved.id, { ...resolved, ticket_ids: [api502.id], count: 1 });
 
@@ -431,7 +444,7 @@ function init(): State {
 
   // A failed and an in-flight ticket for status coverage.
   const failed: TicketRecord = {
-    ...buildTicket({ subject: "Laptop won't boot", body: "My laptop shows a black screen after the update.", createdAt: now - 40 * min, source: "chat" }),
+    ...buildTicket({ subject: "Laptop won't boot", body: "My laptop shows a black screen after the update.", id: seedId("failed"), createdAt: now - 40 * min, source: "chat" }),
     status: "failed", classification: null, retrieval: null, draft: null, decision: null,
     error: "ml-service timeout after 3 retries (504 from /predict)", timings_ms: { queue: 21, classify: 30000 }, latency_ms: null,
   };
@@ -657,6 +670,7 @@ export const mockBackend = {
         { name: "orchestrator", url: "https://orchestrator-xyz.a.run.app", ok: true, latency_ms: 38, info: { version: "0.4.1", subscription: "tickets.ingest-sub" } },
         { name: "ml", url: "https://ml-xyz.a.run.app", ok: true, latency_ms: 52, info: { version: MODEL_VERSION, device: "cpu" } },
         { name: "rag", url: "https://rag-xyz.a.run.app", ok: true, latency_ms: 71, info: { version: RETRIEVER_VERSION, index_size: 48213, llm: DRAFT_MODEL } },
+        { name: "notifier", url: "https://notifier-xyz.a.run.app", ok: true, latency_ms: 12, info: { channel: "ntfy", topic: "alerts" } },
       ],
     };
   },

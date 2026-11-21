@@ -106,3 +106,38 @@ export function stageColor(key: string): string {
 export function decisionOf(t: TicketRecord) {
   return t.decision?.action ?? null;
 }
+
+/** One-line plain-English explanation of each gate reason code (tooltips + escalation callout). */
+export const REASON_EXPLANATIONS: Record<ReasonCode, string> = {
+  HIGH_PRIORITY_INCIDENT: "The model rated this a high-priority incident, so a human engineer must handle it.",
+  LOW_CLASSIFIER_CONFIDENCE: "The classifier wasn't sure about type, queue or priority, so a human should double-check.",
+  LOW_RETRIEVAL_SIMILARITY: "No sufficiently similar past ticket was found, so the AI has little to base a reply on.",
+  NO_PRECEDENT: "Nothing like this exists in the resolved-ticket knowledge base.",
+  UNSUPPORTED_REQUEST: "The customer asked for something past tickets can't answer (off-topic or out-of-policy).",
+  UNGROUNDED_DRAFT: "The AI reply isn't well supported by the cited past tickets, so it might be made up.",
+  SENSITIVE_REQUEST: "The ticket touches credentials, money, legal or personal data — a human must decide.",
+  PROMPT_INJECTION: "The text tries to manipulate the AI (e.g. “ignore your instructions”), so auto-reply is blocked.",
+  ACTIVE_OUTAGE: "This looks like part of an ongoing major incident, so it's linked to the outage instead of auto-replied.",
+  PIPELINE_DEGRADED: "Part of the AI pipeline was slow or unavailable, so the result can't be trusted automatically.",
+  INSUFFICIENT_DETAIL: "The ticket is too short or vague to act on — someone needs to ask the customer for details.",
+};
+
+export function reasonExplanation(code: string): string {
+  return (REASON_EXPLANATIONS as Record<string, string>)[code] ?? "";
+}
+
+export const SEVERITY_LABELS: Record<EscalationReason["severity"], string> = {
+  critical: "Critical",
+  warning: "Warning",
+  info: "Info",
+};
+
+/** Short human labels for what an operator did (Done column, activity feed). */
+export const HUMAN_DONE_LABELS: Record<HumanState, string> = {
+  pending: "Pending",
+  approved: "Reply sent",
+  edited: "Reply edited",
+  rejected: "Draft rejected",
+  acknowledged: "Acknowledged",
+  overridden: "Fields overridden",
+};

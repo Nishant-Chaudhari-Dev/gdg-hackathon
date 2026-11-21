@@ -14,7 +14,7 @@ export function ChartCard({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col rounded-xl border bg-card", className)}>
+    <div className={cn("flex flex-col rounded-md border bg-card", className)}>
       <div className="flex items-start gap-2 px-4 pt-3.5">
         <div className="min-w-0 flex-1">
           <h3 className="text-[13px] font-semibold tracking-tight">{title}</h3>

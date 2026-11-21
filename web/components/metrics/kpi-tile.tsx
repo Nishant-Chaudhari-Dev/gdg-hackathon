@@ -19,7 +19,7 @@ export function KpiTile({
   return (
     <div
       className={cn(
-        "rounded-xl border bg-card p-3.5",
+        "rounded-md border bg-card p-3.5",
         tone === "danger" && "border-red-500/35 bg-red-500/[0.05]",
         className,
       )}
