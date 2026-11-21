@@ -132,6 +132,7 @@ ReasonCode = Literal[
     "PROMPT_INJECTION",
     "ACTIVE_OUTAGE",
     "PIPELINE_DEGRADED",
+    "INSUFFICIENT_DETAIL",
 ]
 
 

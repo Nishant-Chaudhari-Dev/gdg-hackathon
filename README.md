@@ -65,16 +65,17 @@ python eval/evaluate.py --ml-url $(gcloud run services describe ml --region us-c
        --upload gs://$GCP_PROJECT-sentinel-artifacts/eval/latest.json
 ```
 
-## Escalation gate (`gate-v1`)
+## Escalation gate (`gate-v2`)
 
 | Code | Rule | Severity |
 |---|---|---|
 | HIGH_PRIORITY_INCIDENT | priority=high ∧ type=Incident | critical |
-| LOW_CLASSIFIER_CONFIDENCE | confidence < `GATE_MIN_CONFIDENCE` (0.55) | warning |
-| NO_PRECEDENT | best similarity < `GATE_NO_PRECEDENT` (0.20) → no draft generated | critical |
-| LOW_RETRIEVAL_SIMILARITY | best similarity < `GATE_MIN_RETRIEVAL` (0.45) | warning |
+| LOW_CLASSIFIER_CONFIDENCE | confidence < `GATE_MIN_CONFIDENCE` (0.50, chosen on the val split) | warning |
+| NO_PRECEDENT | best similarity < `GATE_NO_PRECEDENT` (0.841, RAG calibration) → no draft generated | critical |
+| LOW_RETRIEVAL_SIMILARITY | best similarity < `GATE_MIN_RETRIEVAL` (0.87, RAG calibration) | warning |
 | UNGROUNDED_DRAFT | refused / not grounded / groundedness < 0.35 / no citations | critical/warning |
-| UNSUPPORTED_REQUEST | customer asks for something no precedent supports | warning |
+| UNSUPPORTED_REQUEST | customer asks for something no precedent supports (RAG draft check + Edwin's risky-topic rule) | warning |
+| INSUFFICIENT_DETAIL | ticket text under 10 characters (Edwin's rule) | warning |
 | PROMPT_INJECTION | injection patterns in ticket → never sent to LLM | critical |
 | ACTIVE_OUTAGE | ticket joins a detected burst (≥3 similar in 15 min) | critical |
 | PIPELINE_DEGRADED | ML/RAG unavailable → fail safe to human | critical |

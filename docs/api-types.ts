@@ -21,7 +21,7 @@ export interface DraftResponse {
 export type ReasonCode =
   | "HIGH_PRIORITY_INCIDENT" | "LOW_CLASSIFIER_CONFIDENCE" | "LOW_RETRIEVAL_SIMILARITY" | "NO_PRECEDENT"
   | "UNSUPPORTED_REQUEST" | "UNGROUNDED_DRAFT" | "SENSITIVE_REQUEST" | "PROMPT_INJECTION"
-  | "ACTIVE_OUTAGE" | "PIPELINE_DEGRADED";
+  | "ACTIVE_OUTAGE" | "PIPELINE_DEGRADED" | "INSUFFICIENT_DETAIL";
 export interface EscalationReason { code: ReasonCode; message: string; severity: "critical" | "warning" | "info"; }
 export interface EscalationDecision { action: "auto_draft" | "escalate"; reasons: EscalationReason[]; rule_version: string; }
 
