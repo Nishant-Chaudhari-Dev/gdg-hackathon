@@ -7,19 +7,24 @@ Owner: Chitta.
 | `services/rag/app/generator.py` | `Generator` for `POST /draft` (contract §4), plus all drafting logic |
 | `src/generation.py` | prototype API: `detect_language`, `mask_pii`, `draft`, `request_supported` (wrapper over `generator.py`) |
 | `eval/eval_generation.py` | drafting metrics on holdout tickets plus adversarial probes; `--judge` for faithfulness |
-| `research/rag/test_generation.py` | 42 offline tests (Gemini is mocked): `python -m pytest research/rag/test_generation.py` |
+| `research/rag/test_generation.py` | 52 offline tests (Gemini is mocked): `python -m pytest research/rag/test_generation.py` |
 | `research/rag/proposed_shared/` | proposed upgrades of `shared/sentinel_core/lang.py` and `pii.py` for the app owner (see below) |
 
 ## How a draft is produced
 1. **PII masking:** done by the gateway, then again before Gemini (masking is idempotent).
-2. **Gemini writes, the code verifies.** `gemini-3.5-flash-lite` (Vertex AI, temperature 0.2, JSON schema output) drafts the reply in `req.language` from the retrieved precedents only. The draft is accepted only if:
+2. **Dataset placeholders are removed before Gemini.** The historical resolutions contain anonymisation placeholders, such as `<tel_num>` (8.3k times), `<name>` (5.1k), `[Name]` (2k) and `<acc_num>` (2k), in about 50 spellings. Without cleaning, 45% of replies copied them, for example "Ihre Kontonummer [acc_num]".
+   - In precedents they become plain words: "contact us at `<tel_num>`" becomes "…at our support hotline", and "Dear `<name>`," becomes "Dear Customer,".
+   - In the ticket they become the gateway's PII tokens: `<acc_num>` becomes `[ACCOUNT_ID]`.
+   - The precedent cards in the UI keep the original text.
+3. **Gemini writes, the code verifies.** `gemini-3.5-flash-lite` (Vertex AI, temperature 0.2, JSON schema output) drafts the reply in `req.language` from the retrieved precedents only. The draft is accepted only if:
    - every `[TKT-xxxxx]` it cites was actually retrieved, and it cites at least one;
    - every number in it appears in the ticket or the evidence;
-   - it is in the requested language.
+   - it is in the requested language;
+   - it contains no dataset placeholder. The gateway tokens `[EMAIL]`, `[PHONE]` etc. are allowed.
 
    Citation variants such as `[TKT-1, TKT-2]` are normalized into the exact tokens the UI links.
-3. **On failure:** one repair round on the same model, with the exact problems fed back. Then `gemini-3.5-flash`. Then an extractive fallback that only quotes past resolutions; it is always marked `grounded=false`, so it goes to human review. A 429 or 503 gets one quick retry first. Any exception returns `refused=true`; the service never raises.
-4. **Gate inputs:**
+4. **On failure:** one repair round on the same model, with the exact problems fed back. Then `gemini-3.5-flash`. Then an extractive fallback that only quotes the cleaned past resolutions; it is always marked `grounded=false`, so it goes to human review. A 429, 503 or timeout gets one quick retry first; the per-call timeout is 8 s, because Vertex occasionally stalls a request. Any exception returns `refused=true`; the service never raises.
+5. **Gate inputs:**
    - `groundedness_score` is the share of substantive sentences that carry a valid citation.
    - `unsupported_requests` combines Gemini's judgement with a keyword check for refunds, compensation, guarantees/SLA, legal and data-deletion requests that no retrieved resolution covers. A Gemini item that a retrieved resolution does cover is dropped.
 
@@ -33,11 +38,12 @@ These come from the live path: gateway masking and language detection, then the 
 | citation validity | **100%** |
 | language match | **100%** |
 | replies with unsupported numbers | **0%** |
-| faithful, judged by `gemini-3.8-flash` | **99%** (1 unfaithful: the reply turned the customer's "restarting … may help" into "you have already tried restarting") |
+| replies with dataset placeholders | **0%** (45% before the placeholder fix) |
+| faithful, judged by `gemini-3.8-flash` | **98%**. Both "unfaithful" verdicts are borderline: one reply turns the customer's "restarting … may help" into "you have already tried restarting"; in the other, the judge reads the raw precedent "callback at `<tel_num>`" and flags the cleaned wording "callback at our support hotline" |
 | answered by Gemini on the first pass | 100% |
-| escalated because of the draft | 1% (a price-quote request with no price in any precedent) |
-| mean groundedness score | 0.983 |
-| draft latency p50 / p95 | 1.10 s / 1.43 s (contract target < 4 s) |
+| escalated because of the draft | 2% (both are price-quote requests with no price in any precedent) |
+| mean groundedness score | 0.979 |
+| draft latency p50 / p95 | 1.24 s / 1.62 s (contract target < 4 s) |
 | adversarial probes | **6/7**: refund+SLA+lawyer, injection, DE outage, integration+pricing, PII and off-topic all pass. "Passwort vergessen" gets an English reply because the gateway's current `shared/` detector labels it `en`; the proposed detector below fixes this (16/16 on two- or three-word tickets). |
 
 ## Proposed for `shared/` (app owner: Soham)
@@ -59,6 +65,7 @@ On full tickets, every remaining mismatch with the dataset's `language` label is
 | `GEMINI_LOCATION` | `global` | Vertex location for the Gemini 3.x models |
 | `GEMINI_MODEL` | (none) | tried first if set; then `gemini-3.5-flash-lite`, then `gemini-3.5-flash`. `gemini-2.5-flash` is not served to new projects |
 | `GEN_MODELS` | (none) | full override of the model chain |
+| `GEN_TIMEOUT_MS` | `8000` | per-call timeout; a stalled call gets one quick retry |
 | `GOOGLE_GENAI_USE_VERTEXAI` | (none) | `true` forces Vertex even when an API key is set (local) |
 | `GEMINI_API_KEY` | (none) | Gemini Developer API (local only, never in code) |
 | `GATE_MIN_RETRIEVAL` | from `<index>/calibration.json` | similarity floor used by `request_supported()` |
