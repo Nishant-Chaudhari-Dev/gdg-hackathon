@@ -7,3 +7,6 @@ faiss-cpu
 langdetect
 streamlit
 python-dotenv
+pyarrow          # retrieval index metadata (parquet)
+google-genai     # Gemini drafting
+truststore       # use the OS certificate store (fixes TLS errors on re-signing networks)
