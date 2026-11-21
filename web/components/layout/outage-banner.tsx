@@ -34,15 +34,15 @@ export function OutageBanner() {
   return (
     <div
       role="alert"
-      className="relative overflow-hidden border-b border-red-500/40 bg-gradient-to-r from-red-600/95 via-red-600/90 to-rose-600/90 text-white"
+      className="relative overflow-hidden border-b border-[#ae2e24] bg-[#c9372c] text-white"
     >
-      <div className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(135deg,transparent,transparent_12px,rgba(255,255,255,0.05)_12px,rgba(255,255,255,0.05)_24px)]" />
+      
       <div className="relative flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 md:px-6">
         <div className="flex items-center gap-2">
           <span className="relative grid size-6 place-items-center rounded-md bg-white/15">
             <Siren className="size-3.5 animate-pulse" />
           </span>
-          <span className="text-[11px] font-bold uppercase tracking-[0.14em]">Major incident</span>
+          <span className="text-[11px] font-bold tracking-[0.14em] uppercase">Major incident in progress</span>
         </div>
         <div className="order-last w-full min-w-0 sm:order-none sm:w-auto sm:flex-1">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -66,7 +66,7 @@ export function OutageBanner() {
             size="sm"
             variant="outline"
             className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white dark:border-white/30 dark:bg-white/10 dark:hover:bg-white/20"
-            render={<Link href={`/outages#${o.id}`} />}
+            render={<Link href={`/incidents#${o.id}`} />}
             nativeButton={false}
           >
             View

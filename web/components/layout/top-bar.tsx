@@ -1,31 +1,37 @@
 "use client";
 
-import { Menu } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { Menu, Plus } from "lucide-react";
+import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { MOCK_MODE } from "@/lib/config";
+import { useUi } from "@/lib/ui-store";
 import { ConnectionIndicator } from "./connection-indicator";
-import { NAV, isActive } from "./nav";
+import { GlobalSearch } from "./global-search";
 import { OperatorInput } from "./operator-input";
 import { ThemeToggle } from "./theme-toggle";
 
 export function TopBar({ onMenu }: { onMenu: () => void }) {
-  const pathname = usePathname();
-  const item = NAV.find((n) => isActive(pathname, n.href));
+  const setCreateOpen = useUi((s) => s.setCreateOpen);
   return (
-    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur supports-backdrop-filter:bg-background/65 md:px-6">
+    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-3 md:gap-3 md:px-5">
       <Button variant="ghost" size="icon-sm" className="md:hidden" onClick={onMenu} aria-label="Open navigation">
         <Menu />
       </Button>
-      <div className="flex min-w-0 items-center gap-2 text-sm">
-        <span className="hidden font-semibold tracking-tight sm:inline">SentinelDesk</span>
-        <span className="hidden text-muted-foreground/50 sm:inline">/</span>
-        <span className="truncate font-medium text-foreground/90">{item?.label ?? "Console"}</span>
-        {item && <span className="hidden truncate text-muted-foreground lg:inline">— {item.description}</span>}
-      </div>
-      <div className="ml-auto flex items-center gap-2">
+      <Suspense fallback={<div className="hidden h-8 max-w-md flex-1 sm:block" />}>
+        <GlobalSearch className="hidden max-w-md min-w-0 flex-1 sm:block" />
+      </Suspense>
+      <Button
+        onClick={() => setCreateOpen(true)}
+        className="h-8 shrink-0 rounded-[4px] bg-primary px-3 font-semibold text-primary-foreground hover:bg-primary/90"
+      >
+        <Plus /> <span>Create</span>
+      </Button>
+      <div className="ml-auto flex items-center gap-1.5 md:gap-2">
         {MOCK_MODE && (
-          <span className="hidden rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-amber-600 sm:inline dark:text-amber-400">
+          <span
+            title="Running against the in-browser mock backend (NEXT_PUBLIC_MOCK=1)"
+            className="hidden rounded-[3px] bg-[#f8e6a0] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#7f5f01] lg:inline dark:bg-[#533f04] dark:text-[#f5cd47]"
+          >
             MOCK DATA
           </span>
         )}
