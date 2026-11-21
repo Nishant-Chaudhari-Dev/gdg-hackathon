@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sentinel-core"
+version = "0.1.0"
+description = "Shared schemas (the service contract), PII masking, language detection and HTTP helpers for SentinelDesk."
+requires-python = ">=3.10"
+dependencies = [
+  "pydantic>=2.6",
+  "httpx>=0.27",
+  "langdetect>=1.0.9",
+]
+
+[project.optional-dependencies]
+gcp = ["google-auth>=2.29", "requests>=2.31", "google-cloud-storage>=2.16"]
+
+[tool.setuptools]
+packages = ["sentinel_core"]

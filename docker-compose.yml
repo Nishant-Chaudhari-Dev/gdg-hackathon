@@ -1,0 +1,60 @@
+# Full SentinelDesk stack locally, zero GCP credentials needed (LOCAL_MODE).
+#   docker compose up --build
+#   console: http://localhost:3000   gateway: http://localhost:8080/docs
+# ML/RAG read ./data and ./research from the host, so the committed split (data/*.csv)
+# and `python scripts/train_baseline.py` immediately upgrade the stubs (restart the service).
+x-py: &py
+  restart: unless-stopped
+  environment: &pyenv
+    PYTHONUNBUFFERED: "1"
+
+services:
+  ml:
+    <<: *py
+    build: { context: ., dockerfile: services/ml/Dockerfile }
+    ports: ["8001:8080"]
+    volumes: ["./data:/app/data:ro", "./research:/app/research:ro"]
+
+  rag:
+    <<: *py
+    build: { context: ., dockerfile: services/rag/Dockerfile }
+    ports: ["8002:8080"]
+    volumes: ["./data:/app/data:ro", "./research:/app/research:ro"]
+    environment:
+      <<: *pyenv
+      KB_LIMIT: "${KB_LIMIT:-0}"          # e.g. 5000 for faster local startup
+      GEMINI_MODEL: "${GEMINI_MODEL:-gemini-2.5-flash}"
+      GCP_PROJECT: "${GCP_PROJECT:-}"
+
+  orchestrator:
+    <<: *py
+    build: { context: ., dockerfile: services/orchestrator/Dockerfile }
+    ports: ["8003:8080"]
+    environment:
+      <<: *pyenv
+      STORE: remote
+      GATEWAY_URL: http://gateway:8080
+      INTERNAL_TOKEN: "${INTERNAL_TOKEN:-dev-token}"
+      ML_URL: http://ml:8080
+      RAG_URL: http://rag:8080
+
+  gateway:
+    <<: *py
+    build: { context: ., dockerfile: services/gateway/Dockerfile }
+    ports: ["8080:8080"]
+    volumes: ["./data:/app/data:ro", "./eval/results:/app/eval/results:ro"]
+    environment:
+      <<: *pyenv
+      STORE: memory
+      BUS: http
+      INTERNAL_TOKEN: "${INTERNAL_TOKEN:-dev-token}"
+      ORCHESTRATOR_URL: http://orchestrator:8080
+      ML_URL: http://ml:8080
+      RAG_URL: http://rag:8080
+
+  web:
+    build:
+      context: ./web
+      args: { NEXT_PUBLIC_API_URL: "http://localhost:8080" }
+    ports: ["${WEB_PORT:-3000}:8080"]   # WEB_PORT=3100 if 3000 is taken
+    depends_on: [gateway]

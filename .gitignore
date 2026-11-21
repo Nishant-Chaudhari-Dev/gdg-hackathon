@@ -23,3 +23,11 @@ Thumbs.db
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Artifacts (large / regenerated). NOTE: data/*.csv IS committed (canonical team split).
+research/**/artifacts/
+research/**/index/
+*.joblib
+*.faiss
+eval/results/latest.json
+artifacts/

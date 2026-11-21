@@ -1,0 +1,16 @@
+node_modules
+.next
+out
+build
+coverage
+npm-debug.log*
+.env*
+!.env.example
+.git
+.gitignore
+Dockerfile
+.dockerignore
+README.md
+AGENTS.md
+*.tsbuildinfo
+.DS_Store

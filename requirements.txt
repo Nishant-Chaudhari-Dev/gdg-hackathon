@@ -1,12 +1,14 @@
-pandas
-numpy
-datasets
-scikit-learn
+# Dev convenience: everything needed to run all Python services + scripts locally.
+-e ./shared[gcp]
+-r services/gateway/requirements.txt
+-r services/orchestrator/requirements.txt
+-r services/ml/requirements.txt
+-r services/rag/requirements.txt
+datasets>=2.18
+pandas>=2.1
+# RAG team (src/retrieval.py, eval/eval_retrieval.py)
 sentence-transformers
 faiss-cpu
-langdetect
-streamlit
-python-dotenv
 pyarrow          # retrieval index metadata (parquet)
 google-genai     # Gemini drafting
 truststore       # use the OS certificate store (fixes TLS errors on re-signing networks)
