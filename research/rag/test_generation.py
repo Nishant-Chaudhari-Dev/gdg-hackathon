@@ -2,6 +2,8 @@
 
     python -m pytest research/rag/test_generation.py -q
 """
+import re
+
 import pytest
 
 import services.rag.app.generator as gen
@@ -96,6 +98,15 @@ def test_rate_limit_moves_to_next_model(monkeypatch):
     assert gen.draft_full(*TICKET_EN, "en", HITS)["source"] == gen.MODELS[1]
 
 
+@pytest.mark.parametrize("err,transient", [
+    (RuntimeError("429 RESOURCE_EXHAUSTED"), True), (RuntimeError("503 UNAVAILABLE"), True),
+    (TimeoutError("The read operation timed out"), True), (RuntimeError("504 DEADLINE_EXCEEDED"), True),
+    (RuntimeError("404 NOT_FOUND model"), False), (ValueError("malformed output"), False),
+])
+def test_transient_errors_are_retried_others_are_not(err, transient):
+    assert gen._is_transient(err) is transient
+
+
 def test_wrong_language_rejected_then_fallback_prefers_same_language(monkeypatch):
     en_reply = {**GOOD_EN, "reply": "Hello, please restart the VPN client [TKT-00042]. Best regards"}
     _mock(monkeypatch, [en_reply] * 4)
@@ -141,6 +152,52 @@ def test_honest_holding_reply_without_citation_is_accepted(monkeypatch):
                          "cited_ticket_ids": [], "evidence_sufficient": False, "unsupported_requests": []}])
     r = gen.draft_full("", "Please confirm lifetime free licenses for us.", "en", HITS)
     assert r["source"] == gen.MODELS[0] and r["evidence_sufficient"] is False and r["grounding"]["holding_reply"]
+
+
+# ----------------------------------------------------------------------------- dataset placeholders (PR #5 review)
+PH_HITS = [{"ticket_id": "TKT-00077", "score": 0.9, "language": "de", "subject": "Konto gesperrt",
+            "body": "Mein Konto <acc_num> ist gesperrt.",
+            "answer": "Sehr geehrter <name>, bitte senden Sie uns Ihre Kontonummer [acc_num] oder rufen Sie uns "
+                      "unter <tel_num> an. Wir entsperren das Konto. Mit freundlichen Grüßen, [Your Name]"}]
+
+
+def test_scrub_evidence_and_ticket():
+    ev = gen.scrub_evidence(PH_HITS[0]["answer"], "de")
+    assert not gen._DATASET_PH.search(ev)
+    assert "Sehr geehrte Damen und Herren," in ev and "Support-Hotline" in ev and "Ihre Kontonummer" in ev
+    en = gen.scrub_evidence("Dear <name>, call us at <tel_num> or mail <email>.<br>Regards, [Your Name]", "en")
+    assert en.startswith("Dear Customer,") and "our support hotline" in en and "<" not in en and "[" not in en
+    t = gen.scrub_ticket("Account <acc_num>, call me at [Telefonnummer], I am <name>.")
+    assert "[ACCOUNT_ID]" in t and "[PHONE]" in t and "<name>" not in t
+
+
+def test_placeholder_in_reply_is_a_problem_but_pii_tokens_and_citations_are_not():
+    bad = gen.check_grounding("Hello, please call <tel_num> [TKT-00011]. Regards", HITS, "t", "en")
+    assert "dataset_placeholder" in bad["problems"] and bad["dataset_placeholders"] == ["<tel_num>"]
+    ok = gen.check_grounding("Hello, we will reply to [EMAIL] about account [ACCOUNT_ID] [TKT-00011]. Regards",
+                             HITS, "t", "en")
+    assert "dataset_placeholder" not in ok["problems"]
+
+
+def test_prompt_has_no_placeholders_and_repair_removes_leak(monkeypatch):
+    leak = {"reply": "Sehr geehrter <name>, bitte senden Sie uns Ihre Kontonummer [acc_num] [TKT-00077]. "
+                     "Ihr Support-Team",
+            "cited_ticket_ids": ["TKT-00077"], "evidence_sufficient": True, "unsupported_requests": []}
+    fixed = {**leak, "reply": "Sehr geehrte Damen und Herren, bitte senden Sie uns Ihre Kontonummer, "
+                              "damit wir das Konto entsperren [TKT-00077]. Ihr Support-Team"}
+    calls = _mock(monkeypatch, [leak, fixed])
+    r = gen.draft_full("Konto gesperrt", "Mein Konto <acc_num> ist seit gestern gesperrt, bitte helfen.", "de", PH_HITS)
+    prompt = calls[0][1][0]["parts"][0]["text"]
+    content = re.sub(r"</?(ticket|precedents?|customer_issue|agent_resolution)\b[^>]*>", " ", prompt)  # prompt's own tags
+    assert "[ACCOUNT_ID]" in content and not gen._DATASET_PH.search(content)
+    assert [a["outcome"] for a in r["attempts"]] == ["rejected", "accepted"]
+    assert "dataset_placeholder" in r["attempts"][0]["problems"] and not gen._DATASET_PH.search(r["reply"])
+
+
+def test_fallback_has_no_placeholders(monkeypatch):
+    monkeypatch.setattr(gen, "_client", lambda: None)
+    r = gen.draft_full("Konto gesperrt", "Mein Konto ist gesperrt, bitte helfen Sie mir.", "de", PH_HITS)
+    assert r["source"] == "fallback" and not gen._DATASET_PH.search(r["reply"]) and "TKT-00077" in r["reply"]
 
 
 # ----------------------------------------------------------------------------- request_supported
