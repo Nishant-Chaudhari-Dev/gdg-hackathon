@@ -46,6 +46,7 @@
 | Extra: traffic simulator (mixed/outage/German/adversarial) | gateway `/api/simulate` |
 | Extra: live ops metrics (escalation rate, p50/p95 per stage, reasons) | gateway `/api/metrics` |
 | Extra: system topology/health page | gateway `/api/system` |
+| Extra: on-call paging (critical keyword + escalated → push to on-call phone, rate limited) | orchestrator `alerts.py` → Pub/Sub `alerts` → `services/notifier` → ntfy |
 
 ## Timeline (H = hackathon start, 6 h total)
 

@@ -39,7 +39,7 @@ setup() {
     gc iam service-accounts describe "${sa}@${GCP_PROJECT}.iam.gserviceaccount.com" >/dev/null 2>&1 || \
       gc iam service-accounts create "$sa" --display-name "SentinelDesk $sa"
   done
-  for role in roles/datastore.user roles/pubsub.publisher roles/aiplatform.user roles/storage.objectAdmin roles/run.invoker roles/logging.logWriter; do
+  for role in roles/datastore.user roles/pubsub.publisher roles/aiplatform.user roles/storage.objectAdmin roles/run.invoker roles/logging.logWriter roles/secretmanager.secretAccessor; do
     gc projects add-iam-policy-binding "$GCP_PROJECT" --member "serviceAccount:$RUN_SA" --role "$role" --condition=None >/dev/null
   done
   gc projects add-iam-policy-binding "$GCP_PROJECT" --member "serviceAccount:$PUSH_SA" --role roles/run.invoker --condition=None >/dev/null
@@ -88,10 +88,24 @@ deploy() {
     --set-env-vars "$common,$gate,KB_URI=gs://$BUCKET/data/kb_train.csv,INDEX_URI=gs://$BUCKET/index/,TOKENIZERS_PARALLELISM=false${GEN_MODELS:+,GEN_MODELS=$GEN_MODELS}"
   local ML RAG; ML=$(url ml); RAG=$(url rag)
   deploy_svc orchestrator no --cpu 1 --memory 1Gi --timeout 300 \
-    --set-env-vars "$common,$gate,STORE=firestore,ML_URL=$ML,RAG_URL=$RAG"
+    --set-env-vars "$common,$gate,STORE=firestore,ML_URL=$ML,RAG_URL=$RAG,ALERTS_TOPIC=alerts"
+  # On-call paging: notifier reads the ntfy topic from Secret Manager (set NTFY_TOPIC once to create/rotate it).
+  if [[ -n ${NTFY_TOPIC:-} ]]; then
+    gc secrets describe ntfy-topic >/dev/null 2>&1 || gc secrets create ntfy-topic --replication-policy automatic
+    printf %s "$NTFY_TOPIC" | gc secrets versions add ntfy-topic --data-file=- >/dev/null
+  fi
+  local WEB; WEB=$(url web 2>/dev/null || true)
+  if gc secrets describe ntfy-topic >/dev/null 2>&1; then
+    deploy_svc notifier no --cpu 1 --memory 512Mi --max-instances 1 \
+      --set-secrets "NTFY_TOPIC=ntfy-topic:latest" \
+      --set-env-vars "$common,STORE=firestore,CONSOLE_URL=$WEB,ALERT_COOLDOWN_S=${ALERT_COOLDOWN_S:-300},ALERT_DAILY_CAP=${ALERT_DAILY_CAP:-20},INTERNAL_TOKEN=$INTERNAL_TOKEN"
+  else
+    echo "WARNING: no ntfy-topic secret (set NTFY_TOPIC=...); notifier not deployed, on-call paging off"
+  fi
+  local NOTIF; NOTIF=$(url notifier 2>/dev/null || true)
   local ORCH; ORCH=$(url orchestrator)
   deploy_svc gateway yes --cpu 1 --memory 1Gi --timeout 3600 --concurrency 200 \
-    --set-env-vars "$common,STORE=firestore,BUS=pubsub,PUBSUB_TOPIC=tickets,ORCHESTRATOR_URL=$ORCH,ML_URL=$ML,RAG_URL=$RAG,EVAL_REPORT_URI=gs://$BUCKET/eval/latest.json,SIM_TICKETS_URI=gs://$BUCKET/data/test_inputs.csv,INTERNAL_TOKEN=$INTERNAL_TOKEN"
+    --set-env-vars "$common,STORE=firestore,BUS=pubsub,PUBSUB_TOPIC=tickets,ORCHESTRATOR_URL=$ORCH,ML_URL=$ML,RAG_URL=$RAG,NOTIFIER_URL=$NOTIF,EVAL_REPORT_URI=gs://$BUCKET/eval/latest.json,SIM_TICKETS_URI=gs://$BUCKET/data/test_inputs.csv,INTERNAL_TOKEN=$INTERNAL_TOKEN"
   pubsub
 }
 
@@ -117,6 +131,21 @@ pubsub() {
   fi
   gc pubsub subscriptions add-iam-policy-binding tickets-orchestrator --member "serviceAccount:$PUBSUB_AGENT" --role roles/pubsub.subscriber >/dev/null
   echo "pubsub wired -> $ORCH/pubsub/push"
+  # alerts -> notifier (on-call paging)
+  gc pubsub topics describe alerts >/dev/null 2>&1 || gc pubsub topics create alerts
+  local NOTIF; NOTIF=$(url notifier 2>/dev/null || true)
+  if [[ -n $NOTIF ]]; then
+    if gc pubsub subscriptions describe alerts-notifier >/dev/null 2>&1; then
+      gc pubsub subscriptions update alerts-notifier --push-endpoint "$NOTIF/pubsub/push" \
+        --push-auth-service-account "$PUSH_SA" --push-auth-token-audience "$NOTIF"
+    else
+      gc pubsub subscriptions create alerts-notifier --topic alerts --push-endpoint "$NOTIF/pubsub/push" \
+        --push-auth-service-account "$PUSH_SA" --push-auth-token-audience "$NOTIF" --ack-deadline 60 \
+        --dead-letter-topic tickets-dlq --max-delivery-attempts 5 --min-retry-delay 5s --max-retry-delay 60s
+    fi
+    gc pubsub subscriptions add-iam-policy-binding alerts-notifier --member "serviceAccount:$PUBSUB_AGENT" --role roles/pubsub.subscriber >/dev/null
+    echo "pubsub wired -> $NOTIF/pubsub/push"
+  fi
 }
 
 web() {
@@ -125,7 +154,7 @@ web() {
   gc run deploy web --image "$IMG/web:$TAG" --region "$REGION" --allow-unauthenticated --min-instances 1 --port 8080 --quiet
 }
 
-urls() { for s in web gateway orchestrator ml rag; do printf "%-13s %s\n" "$s" "$(url $s 2>/dev/null || echo '-')"; done; }
+urls() { for s in web gateway orchestrator ml rag notifier; do printf "%-13s %s\n" "$s" "$(url $s 2>/dev/null || echo '-')"; done; }
 
 case "${1:-all}" in
   setup) setup ;; data) data ;; build) build ;; deploy) deploy ;; pubsub) pubsub ;; web) web ;; urls) urls ;;

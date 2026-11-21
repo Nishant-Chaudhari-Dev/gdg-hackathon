@@ -24,8 +24,13 @@ steps:
     name: gcr.io/cloud-builders/docker
     waitFor: ["-"]
     args: ["build", "-f", "services/rag/Dockerfile", "-t", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/rag:${_TAG}", "."]
+  - id: notifier
+    name: gcr.io/cloud-builders/docker
+    waitFor: ["-"]
+    args: ["build", "-f", "services/notifier/Dockerfile", "-t", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/notifier:${_TAG}", "."]
 images:
   - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/gateway:${_TAG}"
   - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/orchestrator:${_TAG}"
   - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/ml:${_TAG}"
   - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/rag:${_TAG}"
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/notifier:${_TAG}"

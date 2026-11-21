@@ -169,6 +169,15 @@ class HumanReview(BaseModel):
     at: datetime | None = None
 
 
+class PagingInfo(BaseModel):
+    """On-call paging outcome for a ticket (set by the notifier service)."""
+    state: Literal["sent", "rate_limited", "failed"]
+    at: datetime = Field(default_factory=utcnow)
+    channel: str = "ntfy"
+    keywords: list[str] = Field(default_factory=list)
+    detail: str | None = None
+
+
 class TicketRecord(BaseModel):
     id: str
     created_at: datetime = Field(default_factory=utcnow)
@@ -195,6 +204,7 @@ class TicketRecord(BaseModel):
     latency_ms: float | None = None
     error: str | None = None
     human: HumanReview = Field(default_factory=HumanReview)
+    paging: PagingInfo | None = None
 
 
 class Outage(BaseModel):
@@ -228,6 +238,22 @@ class TicketMessage(BaseModel):
     body: str  # masked
     language: str
     source: str = "console"
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+# --------------------------------------------------------------------------- #
+# Pub/Sub message: orchestrator -> notifier (topic `alerts`)
+# --------------------------------------------------------------------------- #
+class AlertEvent(BaseModel):
+    ticket_id: str
+    subject: str  # PII-masked
+    snippet: str  # PII-masked, short
+    language: str = "en"
+    keywords: list[str]  # critical keywords that matched
+    reasons: list[str] = Field(default_factory=list)  # escalation reason codes
+    priority: str | None = None
+    queue: str | None = None
+    outage_id: str | None = None
     created_at: datetime = Field(default_factory=utcnow)
 
 

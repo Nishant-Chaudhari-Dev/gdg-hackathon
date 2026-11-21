@@ -22,7 +22,7 @@ from sentinel_core.schemas import (
 )
 from sentinel_core.store import Store
 
-from . import burst, gate
+from . import alerts, burst, gate
 
 log = logging.getLogger("orchestrator")
 
@@ -109,4 +109,14 @@ async def process(store: Store, msg: TicketMessage) -> dict:
         id=uuid.uuid4().hex, actor="orchestrator", action=f"triaged:{decision.action}", ticket_id=msg.ticket_id,
         details={"reasons": [r.code for r in decision.reasons], "latency_ms": patch["latency_ms"]},
     ))
-    return {"ticket_id": msg.ticket_id, "action": decision.action}
+
+    # On-call paging: escalated + critical keyword -> AlertEvent (notifier handles delivery and rate limits).
+    keywords = alerts.should_page(decision, text)
+    if keywords and alerts.publisher.mode != "disabled":
+        try:
+            await alerts.publisher.publish(alerts.build_event(
+                msg.ticket_id, msg.subject, msg.body, msg.language, keywords, decision, cls,
+                outage.id if outage else None))
+        except Exception as e:  # noqa: BLE001 - paging must never break triage
+            log.warning("alert publish failed for %s: %r", msg.ticket_id, e)
+    return {"ticket_id": msg.ticket_id, "action": decision.action, "paged_keywords": keywords}
