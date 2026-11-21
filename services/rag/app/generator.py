@@ -474,6 +474,39 @@ def _sentences(reply: str) -> list[str]:
     return out
 
 
+# Semantic support: a cited sentence must actually resemble something in the precedent it cites.
+# Measured on 408 cited sentences of judged-faithful drafts: p1 = 0.898, median 0.987; a sentence vs
+# an unrelated precedent: median 0.843, p95 0.901. 0.90 keeps ~99% of honest sentences and rejects
+# ~95% of mis-citations. GEN_SEM_MIN=0 disables it.
+SEM_MIN = float(os.getenv("GEN_SEM_MIN", "0.90"))
+_SEGMENT = re.compile(r"(?<=[.!?])\s+|\n+")
+
+
+def _semantic_support(sentences: list[str], hits: list) -> list[float] | None:
+    """Max cosine between each cited sentence and the sentences of the precedent answers it cites.
+    Uses the embedding model the retriever already loaded; None when unavailable (offline tests)."""
+    if SEM_MIN <= 0 or not sentences:
+        return None
+    try:
+        from .retriever import shared_encoder
+    except ImportError:
+        return None
+    enc = shared_encoder()
+    if enc is None:
+        return None
+    answers = {str(h.get("ticket_id")): clean(h.get("answer")) for h in hits}
+    out = []
+    for s in sentences:
+        ev = [p.strip() for c in _CITE.findall(s) if c in answers
+              for p in _SEGMENT.split(answers[c]) if len(p.strip()) > 15]
+        if not ev:
+            out.append(0.0)
+            continue
+        v = enc.encode([_CITE.sub(" ", s).strip()] + ev)
+        out.append(float((v[1:] @ v[0]).max()))
+    return out
+
+
 def check_grounding(reply: str, hits: list, ticket: str, lang: str) -> dict:
     """Verify a draft against the evidence.
 
@@ -500,6 +533,8 @@ def check_grounding(reply: str, hits: list, ticket: str, lang: str) -> dict:
                    if len(_GREETING.sub("", s).strip(" ,.!:;-")) > 25]
     cited_sents = [s for s in substantive if any(c in s for c in valid)]
     coverage = round(len(cited_sents) / len(substantive), 3) if substantive else 0.0
+    sem = _semantic_support(cited_sents, hits)
+    sem_coverage = round(sum(x >= SEM_MIN for x in sem) / len(sem), 3) if sem else None
 
     problems = []
     if not valid:
@@ -520,6 +555,8 @@ def check_grounding(reply: str, hits: list, ticket: str, lang: str) -> dict:
         "dataset_placeholders": placeholders,
         "language_ok": language_ok,
         "citation_coverage": coverage,
+        "semantic_support": [round(x, 3) for x in sem] if sem else None,
+        "semantic_coverage": sem_coverage,
         "problems": problems,
     }
 
@@ -621,7 +658,9 @@ def _client():
     http = types.HttpOptions(timeout=TIMEOUT_MS)
     key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or os.getenv("LLM_API_KEY")
     if key and key != "your_key_here" and os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "").lower() not in ("1", "true"):
-        return genai.Client(api_key=key, http_options=http)
+        # The Gemini Developer API rejects deadlines under 10 s ("400 INVALID_ARGUMENT: Manually set
+        # deadline 8s is too short"), which silently sent every API-key draft to the fallback.
+        return genai.Client(api_key=key, http_options=types.HttpOptions(timeout=max(TIMEOUT_MS, 10_000)))
     project = os.getenv("GCP_PROJECT") or os.getenv("GOOGLE_CLOUD_PROJECT")
     if project and project != "your-project-id":
         try:
@@ -736,6 +775,8 @@ def draft_full(subject, body, lang: str | None, hits: list) -> dict:
 
     def result(reply, source, g, evidence_sufficient, unsupported):
         coverage = g.get("citation_coverage", 0.0)
+        if g.get("semantic_coverage") is not None:   # cited AND actually supported by the cited precedent
+            coverage = round(coverage * g["semantic_coverage"], 3)
         return {
             "reply": reply,
             "source": source,
