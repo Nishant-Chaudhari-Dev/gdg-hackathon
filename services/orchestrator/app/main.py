@@ -27,7 +27,8 @@ store = _make_store()
 app = FastAPI(title="SentinelDesk orchestrator")
 
 
-@app.get("/healthz", response_model=ServiceInfo)
+@app.get("/healthz", response_model=ServiceInfo)  # local; Cloud Run reserves paths ending in "z"
+@app.get("/health", response_model=ServiceInfo)
 def healthz() -> ServiceInfo:
     return ServiceInfo(service="orchestrator", version=VERSION,
                        details={"store": store.name, "ml": pipeline.ML_URL, "rag": pipeline.RAG_URL})

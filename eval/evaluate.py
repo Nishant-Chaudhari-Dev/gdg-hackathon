@@ -69,7 +69,7 @@ def main() -> None:
 
     headers = asyncio.run(auth_headers(a.ml_url))
     client = httpx.Client(base_url=a.ml_url, timeout=120, headers=headers)
-    info = client.get("/healthz").json()
+    info = client.get("/health").json()
 
     preds: list[dict] = []
     t0 = time.time()
@@ -118,7 +118,7 @@ def main() -> None:
         from google.cloud import storage  # type: ignore
 
         bucket, _, path = a.upload[5:].partition("/")
-        storage.Client().bucket(bucket).blob(path).upload_from_filename(a.out, content_type="application/json")
+        storage.Client(project=os.getenv("GCP_PROJECT")).bucket(bucket).blob(path).upload_from_filename(a.out, content_type="application/json")
         print(f"uploaded {a.upload}")
 
 

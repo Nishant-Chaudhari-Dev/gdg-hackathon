@@ -218,7 +218,7 @@ async def system() -> dict:
     async def ping(name: str, c: ServiceClient) -> dict:
         t = time.perf_counter()
         try:
-            info = await c.get("/healthz")
+            info = await c.get("/health")
             return {"name": name, "url": c.base_url, "ok": True, "latency_ms": round((time.perf_counter() - t) * 1000, 1), "info": info}
         except Exception as e:  # noqa: BLE001
             return {"name": name, "url": c.base_url, "ok": False, "latency_ms": None, "error": repr(e)[:200]}
@@ -289,7 +289,8 @@ async def events(request: Request) -> StreamingResponse:
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
-@app.get("/healthz")
+@app.get("/healthz")  # local; Cloud Run reserves paths ending in "z"
+@app.get("/health")
 def healthz() -> dict:
     return {"service": "gateway", "version": "0.1", "ready": True, "details": {"store": store.name, "bus": bus.name}}
 
