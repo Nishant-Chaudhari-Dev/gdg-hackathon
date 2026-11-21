@@ -9,8 +9,14 @@ queries. A German ticket can retrieve English precedents and vice versa (cross_l
 Index: built offline from data/kb_train.csv ONLY (never test.csv) by
     python research/rag/build_index.py
 and loaded at startup from INDEX_URI (local dir, or gs://bucket/.../index/ on Cloud Run).
-Default: research/rag/artifacts/index. The index dir bundles the embedding model, so the
-service never needs the Hugging Face Hub at runtime.
+Two formats are accepted:
+  * full dir (local dev, gitignored): research/rag/artifacts/index/ with kb.faiss,
+    kb_meta.parquet, kb_info.json and the bundled embedding model in model/;
+  * single deploy file (committed): research/rag/index/kb_index.pkl.gz with fp16 vectors,
+    metadata and calibration (~25 MB). infra/deploy.sh uploads research/rag/index/ to
+    gs://<bucket>/index/, which is the INDEX_URI the RAG service is deployed with. The
+    embedding model is then loaded by name from the Hugging Face Hub at startup.
+Without INDEX_URI the full dir is preferred, then the deploy file.
 
 If no index is found, the service falls back to TF-IDF over data/kb_train.csv (or the tiny
 fixture) so the stack keeps running; retriever_version then ends in "-fallback".
@@ -41,7 +47,9 @@ except ImportError:
     pass
 
 FIXTURE = Path(__file__).parent / "fixture_kb.json"
-DEFAULT_INDEX_REL = "research/rag/artifacts/index"
+DEFAULT_INDEX_RELS = ("research/rag/artifacts/index", "research/rag/index")  # full dir first
+PICKLE_NAME = "kb_index.pkl.gz"
+PICKLE_FORMAT = "sentineldesk-rag-index-v1"
 EMBED_MODEL = os.getenv("EMBED_MODEL", "intfloat/multilingual-e5-small")
 MAX_SEQ_LEN = 256
 FETCH_FACTOR = 4  # over-fetch, then drop near-identical precedents
@@ -109,18 +117,63 @@ class Encoder:
         return np.asarray(vecs, dtype="float32")
 
 
+def _has_index(d: Path) -> bool:
+    return (d / "kb.faiss").exists() or (d / PICKLE_NAME).exists()
+
+
 def resolve_index_dir() -> str | None:
-    """INDEX_URI if set (gs:// dirs are downloaded once), else the default local path."""
+    """INDEX_URI if set (gs:// dirs are downloaded once), else the default local paths."""
     uri = os.getenv("INDEX_URI", "").strip()
     if uri:
         if uri.startswith("gs://") and not uri.endswith("/"):
             uri += "/"
         return ensure_local(uri)
-    for base in (Path.cwd(), *Path(__file__).resolve().parents):
-        cand = base / DEFAULT_INDEX_REL
-        if (cand / "kb.faiss").exists():
-            return str(cand)
+    for rel in DEFAULT_INDEX_RELS:
+        for base in (Path.cwd(), *Path(__file__).resolve().parents):
+            if _has_index(base / rel):
+                return str(base / rel)
     return None
+
+
+def save_pickle(path: Path, vectors: np.ndarray, meta, info: dict, calibration: dict | None) -> Path:
+    """Write the single-file deploy index. Only bytes/lists/dicts are pickled, so loading it
+    does not depend on pandas/numpy/faiss versions."""
+    import gzip
+    import pickle
+
+    vec16 = np.ascontiguousarray(vectors, dtype="float16")
+    blob = {
+        "format": PICKLE_FORMAT,
+        "info": {**info, "storage": "pickle-gzip-fp16"},
+        "calibration": calibration or {},
+        "vectors": vec16.tobytes(),
+        "shape": list(vec16.shape),
+        "meta": {c: [None if v is None else str(v) for v in meta[c].tolist()] for c in meta.columns},
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with gzip.open(path, "wb", compresslevel=6) as f:
+        pickle.dump(blob, f, protocol=4)
+    return path
+
+
+def _load_pickle(path: Path):
+    """-> (info, faiss index, metadata DataFrame) from a save_pickle() file."""
+    import gzip
+    import pickle
+
+    import faiss
+    import pandas as pd
+
+    with gzip.open(path, "rb") as f:
+        blob = pickle.load(f)  # our own committed artifact, never user-supplied
+    if blob.get("format") != PICKLE_FORMAT:
+        raise ValueError(f"{path} is not a {PICKLE_FORMAT} file")
+    vecs = np.frombuffer(blob["vectors"], dtype="float16").reshape(blob["shape"]).astype("float32")
+    vecs /= np.linalg.norm(vecs, axis=1, keepdims=True).clip(min=1e-12)  # re-normalise after fp16
+    index = faiss.IndexFlatIP(vecs.shape[1])
+    index.add(vecs)
+    info = {**blob["info"], "calibration": blob.get("calibration", {})}
+    return info, index, pd.DataFrame(blob["meta"])
 
 
 # ------------------------------------------------------------------ retriever
@@ -137,8 +190,8 @@ class Retriever:
     def load(self) -> None:
         index_dir = resolve_index_dir()
         try:
-            if not index_dir or not exists(os.path.join(index_dir, "kb.faiss")):
-                raise FileNotFoundError(f"no FAISS index at {index_dir or DEFAULT_INDEX_REL}")
+            if not index_dir or not _has_index(Path(index_dir)):
+                raise FileNotFoundError(f"no RAG index at {index_dir or ' or '.join(DEFAULT_INDEX_RELS)}")
             self._load_dense(Path(index_dir))
         except Exception as exc:  # never take the service down: degrade to TF-IDF
             print(f"[rag] dense index unavailable ({exc}); falling back to TF-IDF", flush=True)
@@ -150,14 +203,17 @@ class Retriever:
         import faiss
         import pandas as pd
 
-        info = json.loads((d / "kb_info.json").read_text(encoding="utf-8"))
+        if (d / "kb.faiss").exists():  # full dir (local dev)
+            info = json.loads((d / "kb_info.json").read_text(encoding="utf-8"))
+            self._index = faiss.read_index(str(d / "kb.faiss"))
+            self._meta = pd.read_parquet(d / "kb_meta.parquet")
+        else:  # single deploy file
+            info, self._index, self._meta = _load_pickle(d / PICKLE_NAME)
+        if self._index.ntotal != len(self._meta):
+            raise RuntimeError("index vectors and metadata are out of sync; rebuild the index")
         model_dir = d / "model"
         self._enc = Encoder(str(model_dir) if model_dir.exists() else info["embed_model"],
                             model_name=info["embed_model"])
-        self._index = faiss.read_index(str(d / "kb.faiss"))
-        self._meta = pd.read_parquet(d / "kb_meta.parquet")
-        if self._index.ntotal != len(self._meta):
-            raise RuntimeError("kb.faiss and kb_meta.parquet are out of sync; rebuild the index")
         self.info = info
         self.version = info.get("version", "mE5-small+faiss-flatip")
         self._enc.encode(["warmup"])  # the first encode is slow; pay it at startup

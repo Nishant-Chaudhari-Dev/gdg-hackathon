@@ -1,10 +1,16 @@
 """Build the RAG precedent index from data/kb_train.csv ONLY (never test.csv).
 
 Owner: RAG team (Nishant).   Run from the repo root:
-    python research/rag/build_index.py                  # -> research/rag/artifacts/index/
+    python research/rag/build_index.py                  # full build + deploy file
+    python research/rag/build_index.py --export-only    # just re-export the deploy file
     python research/rag/build_index.py --out DIR --no-bundle-model --skip-calibration
 
-Output dir (upload it whole to gs://<project>-sentinel-artifacts/index/ and set INDEX_URI):
+Deploy file (commit it with `git add -f`, it is under a gitignored path):
+    research/rag/index/kb_index.pkl.gz   fp16 vectors + metadata + calibration (~25 MB).
+    infra/deploy.sh uploads research/rag/index/ to gs://<bucket>/index/, which is the
+    INDEX_URI the RAG service is deployed with. The model loads from the HF Hub at startup.
+
+Full local dir (gitignored; also usable as INDEX_URI):
     kb.faiss          FAISS IndexFlatIP over L2-normalised multilingual-e5-small embeddings
     kb_meta.parquet   ticket_id, subject, body, answer, type, queue, priority, language (detected
                       from text), language_label (original column), tags, split, dedup_key
@@ -36,14 +42,17 @@ from sentinel_core.text import clean  # noqa: E402
 from services.rag.app.retriever import (  # noqa: E402
     EMBED_MODEL,
     Encoder,
+    PICKLE_NAME,
     Retriever,
     dedup_key,
     guess_language,
+    save_pickle,
     ticket_text,
 )
 
 DEFAULT_KB = ROOT / "data" / "kb_train.csv"
 DEFAULT_OUT = ROOT / "research" / "rag" / "artifacts" / "index"
+DEFAULT_PICKLE = ROOT / "research" / "rag" / "index" / PICKLE_NAME
 VERSION = "mE5-small+faiss-flatip-v1"
 META_COLS = ["ticket_id", "subject", "body", "answer", "type", "queue", "priority", "language", "split"]
 
@@ -199,26 +208,48 @@ def calibrate(r: Retriever, out: Path) -> dict:
     return result
 
 
+def export_pickle(index_dir: Path, pickle_path: Path) -> dict:
+    """Pack a full index dir into the single deploy file (no re-embedding)."""
+    import faiss
+
+    index = faiss.read_index(str(index_dir / "kb.faiss"))
+    meta = pd.read_parquet(index_dir / "kb_meta.parquet")
+    info = json.loads((index_dir / "kb_info.json").read_text(encoding="utf-8"))
+    cal_path = index_dir / "calibration.json"
+    cal = json.loads(cal_path.read_text(encoding="utf-8")) if cal_path.exists() else {}
+    cal = {k: v for k, v in cal.items() if not k.endswith("_scores")}  # keep the deploy file lean
+    save_pickle(pickle_path, index.reconstruct_n(0, index.ntotal), meta, info, cal)
+    return {"deploy_file": str(pickle_path.relative_to(ROOT)) if pickle_path.is_relative_to(ROOT) else str(pickle_path),
+            "size_mb": round(pickle_path.stat().st_size / 1e6, 1), "n_vectors": int(index.ntotal)}
+
+
 def main():
     ap = argparse.ArgumentParser(description="Build the SentinelDesk RAG index (KB only)")
     ap.add_argument("--kb", type=Path, default=DEFAULT_KB)
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    ap.add_argument("--pickle", type=Path, default=DEFAULT_PICKLE, help="single-file deploy index path")
+    ap.add_argument("--no-pickle", action="store_true", help="don't write the deploy file")
+    ap.add_argument("--export-only", action="store_true", help="only re-export the deploy file from --out")
     ap.add_argument("--no-bundle-model", action="store_true", help="don't copy the embedding model into the index dir")
     ap.add_argument("--skip-calibration", action="store_true")
     ap.add_argument("--batch-size", type=int, default=128)
     args = ap.parse_args()
 
-    info = build(args.kb, args.out, not args.no_bundle_model, args.batch_size)
-    print(json.dumps(info, indent=2))
+    if not args.export_only:
+        info = build(args.kb, args.out, not args.no_bundle_model, args.batch_size)
+        print(json.dumps(info, indent=2))
 
-    r = Retriever()
-    r._load_dense(args.out)  # also proves the saved dir loads exactly like the service will
-    if not args.skip_calibration:
-        cal = calibrate(r, args.out)
-        print(json.dumps({k: v for k, v in cal.items() if not k.endswith("_scores")}, indent=2, ensure_ascii=False))
-        env = cal["recommended_env"]
-        print(f"\nSend to the app owner:  GATE_MIN_RETRIEVAL={env['GATE_MIN_RETRIEVAL']}  "
-              f"GATE_NO_PRECEDENT={env['GATE_NO_PRECEDENT']}")
+        r = Retriever()
+        r._load_dense(args.out)  # also proves the saved dir loads exactly like the service will
+        if not args.skip_calibration:
+            cal = calibrate(r, args.out)
+            print(json.dumps({k: v for k, v in cal.items() if not k.endswith("_scores")}, indent=2, ensure_ascii=False))
+            env = cal["recommended_env"]
+            print(f"\nSend to the app owner:  GATE_MIN_RETRIEVAL={env['GATE_MIN_RETRIEVAL']}  "
+                  f"GATE_NO_PRECEDENT={env['GATE_NO_PRECEDENT']}")
+
+    if not args.no_pickle:
+        print(json.dumps(export_pickle(args.out, args.pickle), indent=2))
 
 
 if __name__ == "__main__":
