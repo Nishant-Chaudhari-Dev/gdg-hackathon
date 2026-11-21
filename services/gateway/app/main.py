@@ -239,7 +239,9 @@ async def get_eval() -> dict:
         raise HTTPException(404, f"no eval report yet ({e.__class__.__name__})") from e
 
 
-_health_clients = {n: ServiceClient(u, timeout=5) for n, u in (("orchestrator", ORCH_URL), ("ml", ML_URL), ("rag", RAG_URL))}
+NOTIFIER_URL = os.getenv("NOTIFIER_URL", "").strip()
+_health_clients = {n: ServiceClient(u, timeout=5) for n, u in (("orchestrator", ORCH_URL), ("ml", ML_URL), ("rag", RAG_URL),
+                                                               ("notifier", NOTIFIER_URL)) if u}
 
 
 @app.get("/api/system")

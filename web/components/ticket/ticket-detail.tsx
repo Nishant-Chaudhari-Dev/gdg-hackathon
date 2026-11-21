@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AlertOctagon, Clock, Hash, Inbox, Loader2, Siren } from "lucide-react";
+import { BellRing, AlertOctagon, Clock, Hash, Inbox, Loader2, Siren } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/layout/empty-state";
@@ -62,6 +62,19 @@ function Header({ ticket }: { ticket: TicketRecord }) {
         {ticket.decision && <DecisionBadge action={ticket.decision.action} />}
         {ticket.classification && <PriorityBadge priority={ticket.classification.priority.label} />}
         <LangBadge lang={ticket.language} />
+        {ticket.paging && (
+          <span
+            title={`${ticket.paging.detail ?? ""}${ticket.paging.keywords.length ? ` · keywords: ${ticket.paging.keywords.join(", ")}` : ""}`}
+            className={
+              ticket.paging.state === "sent"
+                ? "inline-flex h-5 items-center gap-1 rounded-md border border-fuchsia-500/30 bg-fuchsia-500/10 px-1.5 text-[11px] font-medium text-fuchsia-700 dark:text-fuchsia-300"
+                : "inline-flex h-5 items-center gap-1 rounded-md border border-border bg-muted px-1.5 text-[11px] font-medium text-muted-foreground"
+            }
+          >
+            <BellRing className="size-3" />
+            {ticket.paging.state === "sent" ? "On-call paged" : ticket.paging.state === "rate_limited" ? "Page held (rate limit)" : "Page failed"}
+          </span>
+        )}
         {ticket.outage_id && (
           <Link
             href={`/outages#${ticket.outage_id}`}

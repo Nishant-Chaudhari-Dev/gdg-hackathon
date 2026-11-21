@@ -39,6 +39,10 @@ export interface TicketRecord {
   decision?: EscalationDecision | null; signature: string[]; outage_id?: string | null;
   timings_ms: Record<string, number>; // keys: queue, classify, retrieve, draft, gate, total
   latency_ms?: number | null; error?: string | null; human: HumanReview;
+  paging?: PagingInfo | null; // set when on-call was paged (notifier service)
+}
+export interface PagingInfo {
+  state: "sent" | "rate_limited" | "failed"; at: ISODate; channel: string; keywords: string[]; detail?: string | null;
 }
 export interface Outage {
   id: string; title: string; signature: string[]; queue?: string | null; ticket_ids: string[]; count: number;

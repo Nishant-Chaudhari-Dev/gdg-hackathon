@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, ArrowRight, Brain, Cloud, Database, Globe, Laptop, Library, RefreshCw, Server, Waypoints, type LucideIcon } from "lucide-react";
+import { ArrowDown, ArrowRight, BellRing, Brain, Cloud, Database, Globe, Laptop, Library, RefreshCw, Server, Waypoints, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -97,6 +97,7 @@ function Diagram({ sys, reachable }: { sys: SystemStatus | null; reachable: bool
     ml: { title: "ML service", role: "Multilingual classifier", icon: Brain, ...fromService(findService(sys, "ml", "classif"), unknown) },
     rag: { title: "RAG service", role: "Retrieval + grounded drafting", icon: Library, ...fromService(findService(sys, "rag", "retriev"), unknown) },
     store: { title: "Firestore", role: sys?.store ?? "ticket + audit store", icon: Database, health: (sys ? "managed" : unknown) as Health },
+    notifier: { title: "Notifier", role: "On-call paging · alerts topic → ntfy push", icon: BellRing, ...fromService(findService(sys, "notif", "alert"), unknown) },
   } satisfies Record<string, NodeSpec>;
 
   return (
@@ -123,7 +124,10 @@ function Diagram({ sys, reachable }: { sys: SystemStatus | null; reachable: bool
             gateway + orchestrator read / write
             <span className="h-px w-10 border-t border-dashed border-muted-foreground/50" />
           </div>
-          <div className="w-full xl:w-72"><Node n={nodes.store} /></div>
+          <div className="flex w-full flex-col gap-2 sm:flex-row xl:w-auto">
+            <div className="w-full xl:w-72"><Node n={nodes.store} /></div>
+            <div className="w-full xl:w-72"><Node n={nodes.notifier} /></div>
+          </div>
         </div>
         <div className="hidden flex-1 xl:block" />
       </div>

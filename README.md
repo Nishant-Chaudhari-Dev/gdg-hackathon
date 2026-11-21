@@ -65,6 +65,19 @@ python eval/evaluate.py --ml-url $(gcloud run services describe ml --region us-c
        --upload gs://$GCP_PROJECT-sentinel-artifacts/eval/latest.json
 ```
 
+## On-call paging
+
+When a ticket is **escalated** and mentions critical wording ("system crash", "page down", "server down", "data loss", "500 errors", "Systemabsturz", "Seite nicht erreichbar"…; list in `services/orchestrator/app/alerts.py`), the orchestrator publishes an `AlertEvent` to the Pub/Sub `alerts` topic. The **notifier** service then sends a push notification to the on-call phone via [ntfy](https://ntfy.sh).
+
+- **Spam protection:** at most 1 page per 5 min and 20/day. Held-back alerts are reported as "+N more" in the next page.
+- **What's recorded:** the outcome is stored on the ticket (console badge "On-call paged") and in the audit log.
+- **Privacy:** only PII-masked text is sent. The ntfy topic name is the only secret: keep it out of git (`.env` locally, Secret Manager `ntfy-topic` on GCP).
+
+**Setup:**
+1. Install the ntfy app and subscribe to your topic.
+2. Deploy with `NTFY_TOPIC=<topic> ./infra/deploy.sh deploy`.
+3. To test without paging: `ALERTS_DRY_RUN=1`.
+
 ## Escalation gate (`gate-v2`)
 
 | Code | Rule | Severity |
