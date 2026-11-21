@@ -13,7 +13,7 @@ from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from sentinel_core.http import ServiceClient
@@ -287,6 +287,12 @@ async def events(request: Request) -> StreamingResponse:
 
     return StreamingResponse(gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.get("/", include_in_schema=False)
+def root() -> RedirectResponse:
+    """The gateway is an API; send people who open the bare URL to the interactive docs."""
+    return RedirectResponse("/docs")
 
 
 @app.get("/healthz")  # local; Cloud Run reserves paths ending in "z"
