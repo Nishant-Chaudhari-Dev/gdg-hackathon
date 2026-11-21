@@ -41,6 +41,7 @@ sys.path.insert(0, str(ROOT))
 from sentinel_core.text import clean  # noqa: E402
 from services.rag.app.retriever import (  # noqa: E402
     EMBED_MODEL,
+    OOD_WEIGHT,
     Encoder,
     PICKLE_NAME,
     Retriever,
@@ -73,6 +74,27 @@ OFF_TOPIC = [
     ("Urlaub", "Welche Sehenswürdigkeiten sollte ich in Rom besuchen?"),
     ("", "Erzähl mir einen Witz über Hunde."),
     ("Medical", "I have a headache and a fever, which medicine should I take?"),
+    # added: technical-sounding or business-sounding requests that are still not helpdesk tickets
+    ("Python homework", "Write a Python function that checks whether a string is a palindrome for my class."),
+    ("", "Explain the difference between a black hole and a neutron star."),
+    ("Stock tip", "Should I buy Nvidia shares now or wait until after the earnings call?"),
+    ("", "Translate 'good morning, how are you' into Japanese and Korean."),
+    ("Essay", "Write a 500-word essay about the causes of the French Revolution."),
+    ("", "What is the capital of Australia and how many people live there?"),
+    ("Gaming", "What are the best settings to get more FPS in Fortnite?"),
+    ("", "My dog keeps barking at night, how can I train him to stop?"),
+    ("Wedding", "Give me ideas for a speech at my sister's wedding."),
+    ("", "Who is going to win the next US presidential election?"),
+    ("Diet", "How many calories should I eat per day to lose 5 kg?"),
+    ("", "Recommend a good sci-fi novel similar to Dune."),
+    ("Programmieren", "Schreib mir ein JavaScript-Programm, das die Fibonacci-Zahlen ausgibt."),
+    ("", "Was ist der Unterschied zwischen Weißwein und Rotwein?"),
+    ("Steuern", "Wie viel Kirchensteuer zahle ich in Bayern als Angestellter?"),
+    ("", "Kannst du mir ein gutes Fitnessprogramm für Anfänger empfehlen?"),
+    ("Geschichte", "Erkläre mir die Ursachen des Ersten Weltkriegs."),
+    ("", "Wie lange muss ein Ei kochen, damit es weich ist?"),
+    ("Liebe", "Wie kann ich meiner Freundin zeigen, dass ich sie liebe?"),
+    ("", "Welche Aktien soll ich dieses Jahr kaufen?"),
 ]
 
 IN_SCOPE = [
@@ -94,6 +116,29 @@ IN_SCOPE = [
     ("", "Bietet Ihre Software eine Schnittstelle zu SAP an? Wir planen eine Integration."),
     ("Systemausfall", "Seit 8 Uhr ist unser CRM-System komplett ausgefallen, der Vertrieb kann nicht arbeiten."),
     ("Software installieren", "Bitte installieren Sie Adobe Acrobat auf meinem Arbeitsrechner."),
+    # added: short, informal, typo-ridden and German tickets, the way judges type them live
+    ("", "cant login to the portal, says invalid token"),
+    ("urgent", "email not syncing on my iphone since yesterday"),
+    ("", "Where is my order? It was supposed to arrive last week."),
+    ("Invoice", "Please send me a copy of last month's invoice for our accounting."),
+    ("", "The mobile app crashes every time I open the reports tab."),
+    ("Data export", "How can I export all our project data to CSV?"),
+    ("", "Our website is very slow since the last deployment, pages take 10 seconds to load."),
+    ("Cancel subscription", "I want to cancel my subscription at the end of this billing period."),
+    ("", "We need admin rights for a new team member in the dashboard."),
+    ("Security", "One of our employees clicked a phishing link, what should we do now?"),
+    ("Upgrade", "What is the difference between the Pro and the Enterprise plan?"),
+    ("", "The printer in room 204 shows a paper jam error but there is no paper stuck."),
+    ("", "passwort vergessen, kann mich nicht anmelden"),
+    ("Lieferung", "Meine Bestellung ist noch nicht angekommen, wo ist sie?"),
+    ("", "Die App stürzt ab, sobald ich ein Foto hochlade."),
+    ("Rechnung", "Bitte schicken Sie mir eine Kopie der Rechnung vom letzten Monat."),
+    ("", "Unsere Webseite ist seit dem Update sehr langsam."),
+    ("Kündigung", "Ich möchte mein Abo zum Ende des Monats kündigen."),
+    ("", "Wir brauchen einen neuen Benutzer mit Adminrechten im Dashboard."),
+    ("Phishing", "Ein Mitarbeiter hat auf einen Phishing-Link geklickt. Was sollen wir tun?"),
+    ("", "Gibt es eine Integration mit Microsoft Teams?"),
+    ("E-Mail", "Seit gestern kommen keine E-Mails mehr in Outlook an."),
 ]
 
 
@@ -151,8 +196,10 @@ def build(kb_csv: Path, out: Path, bundle_model: bool, batch_size: int) -> dict:
 
 
 def _top1(r: Retriever, queries) -> np.ndarray:
-    qv = r._enc.encode([ticket_text(s, b) for s, b in queries])
-    return np.array([rows[0]["score"] if rows else 0.0 for rows in r.search_vectors(qv, 1)])
+    """max_score exactly as the service reports it: precedent coverage (cosine - out-of-scope penalty)."""
+    texts = [ticket_text(s, b) for s, b in queries]
+    rows = r.search_vectors(r._enc.encode(texts), 1)
+    return np.array([r.coverage(t, rw[0]["score"]) if rw else 0.0 for t, rw in zip(texts, rows)])
 
 
 def calibrate(r: Retriever, out: Path) -> dict:
@@ -160,13 +207,14 @@ def calibrate(r: Retriever, out: Path) -> dict:
     pool = meta[meta["split"] == "val"]
     if pool.empty:
         pool = meta.sample(n=min(3000, len(meta)), random_state=0)
-    qv = r._enc.encode([ticket_text(s, b) for s, b in zip(pool["subject"], pool["body"])], batch_size=128)
+    pool_texts = [ticket_text(s, b) for s, b in zip(pool["subject"], pool["body"])]
+    qv = r._enc.encode(pool_texts, batch_size=128)
     scores, ids = r._index.search(qv, 20)
     loo = []
     for j, (tid, key) in enumerate(zip(pool["ticket_id"], pool["dedup_key"])):
         rows = r._rows(scores[j], ids[j], 1, {tid}, {key})
         if rows:
-            loo.append(rows[0]["score"])
+            loo.append(r.coverage(pool_texts[j], rows[0]["score"]))
     loo = np.array(loo)
     off, hand = _top1(r, OFF_TOPIC), _top1(r, IN_SCOPE)
 
@@ -186,7 +234,7 @@ def calibrate(r: Retriever, out: Path) -> dict:
         return round(float((x < t).mean()), 4)
 
     result = {
-        "recommended_env": {"GATE_MIN_RETRIEVAL": min_retrieval, "GATE_NO_PRECEDENT": no_precedent},
+        "recommended_env": {"RAG_OOD_WEIGHT": OOD_WEIGHT, "GATE_MIN_RETRIEVAL": min_retrieval, "GATE_NO_PRECEDENT": no_precedent},
         "embed_model": r.info.get("embed_model"),
         "index_version": r.version,
         "method": method,
@@ -230,14 +278,16 @@ def main():
     ap.add_argument("--pickle", type=Path, default=DEFAULT_PICKLE, help="single-file deploy index path")
     ap.add_argument("--no-pickle", action="store_true", help="don't write the deploy file")
     ap.add_argument("--export-only", action="store_true", help="only re-export the deploy file from --out")
+    ap.add_argument("--calibrate-only", action="store_true", help="recalibrate an existing --out dir, then export")
     ap.add_argument("--no-bundle-model", action="store_true", help="don't copy the embedding model into the index dir")
     ap.add_argument("--skip-calibration", action="store_true")
     ap.add_argument("--batch-size", type=int, default=128)
     args = ap.parse_args()
 
     if not args.export_only:
-        info = build(args.kb, args.out, not args.no_bundle_model, args.batch_size)
-        print(json.dumps(info, indent=2))
+        if not args.calibrate_only:
+            info = build(args.kb, args.out, not args.no_bundle_model, args.batch_size)
+            print(json.dumps(info, indent=2))
 
         r = Retriever()
         r._load_dense(args.out)  # also proves the saved dir loads exactly like the service will
@@ -245,8 +295,8 @@ def main():
             cal = calibrate(r, args.out)
             print(json.dumps({k: v for k, v in cal.items() if not k.endswith("_scores")}, indent=2, ensure_ascii=False))
             env = cal["recommended_env"]
-            print(f"\nSend to the app owner:  GATE_MIN_RETRIEVAL={env['GATE_MIN_RETRIEVAL']}  "
-                  f"GATE_NO_PRECEDENT={env['GATE_NO_PRECEDENT']}")
+            print(f"\nSend to the app owner (set together):  RAG_OOD_WEIGHT={env['RAG_OOD_WEIGHT']}  "
+                  f"GATE_MIN_RETRIEVAL={env['GATE_MIN_RETRIEVAL']}  GATE_NO_PRECEDENT={env['GATE_NO_PRECEDENT']}")
 
     if not args.no_pickle:
         print(json.dumps(export_pickle(args.out, args.pickle), indent=2))

@@ -1,0 +1,922 @@
+{
+  "report": {
+    "n": 60,
+    "k": 3,
+    "judge_models_used": {
+      "gemini-3.5-flash-lite": 60
+    },
+    "precision@1_relevant": 0.767,
+    "precision@1_relevant_or_partial": 0.983,
+    "precision@3_relevant": 0.644,
+    "precision@3_relevant_or_partial": 0.983,
+    "hit@3_relevant": 1.0,
+    "top1_irrelevant_examples": [
+      {
+        "id": "TKT-07440",
+        "why": "This ticket is about Sophos Home antivirus, whereas the new ticket specifically asks about Microsoft Dynamics 365."
+      }
+    ]
+  },
+  "rows": [
+    {
+      "id": "TKT-21444",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "partial",
+        "relevant"
+      ],
+      "scores": [
+        0.97,
+        0.959,
+        0.929
+      ],
+      "why_top1": "This past ticket is almost identical to the new ticket, addressing the exact same request for updating a digital strategy framework for brand and marketing growth, and the resolution directly applies."
+    },
+    {
+      "id": "TKT-12258",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "relevant"
+      ],
+      "scores": [
+        0.941,
+        0.935,
+        0.935
+      ],
+      "why_top1": "It deals with unauthorized access to medical data in hospital systems due to outdated patches, and its resolution involves security patch updates, directly matching the new ticket."
+    },
+    {
+      "id": "TKT-08864",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "partial",
+        "partial"
+      ],
+      "scores": [
+        0.957,
+        0.956,
+        0.955
+      ],
+      "why_top1": "This past ticket specifically discusses securing medical data systems with a focus on encryption, access controls, and audit logging, matching the new ticket's requirements closely although mentioning general hospital systems rather than specifically naming Elasticsearch in the body."
+    },
+    {
+      "id": "TKT-01703",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "relevant"
+      ],
+      "scores": [
+        0.986,
+        0.969,
+        0.899
+      ],
+      "why_top1": "This past ticket addresses the exact same issue (slow query performance in a MySQL database during data analysis) and the resolution requests the same diagnostic information needed for the new ticket."
+    },
+    {
+      "id": "TKT-28383",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "relevant"
+      ],
+      "scores": [
+        0.981,
+        0.959,
+        0.961
+      ],
+      "why_top1": "This ticket addresses the exact same problem of billing discrepancies following a payment gateway update and asks for a temporary solution, making the resolution directly applicable."
+    },
+    {
+      "id": "TKT-02352",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "partial",
+        "relevant"
+      ],
+      "scores": [
+        0.994,
+        0.957,
+        0.949
+      ],
+      "why_top1": "This past ticket addresses the exact same request regarding the optimization of investment strategies using the Alteryx and Scikit-learn integration."
+    },
+    {
+      "id": "TKT-11227",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "partial",
+        "partial"
+      ],
+      "scores": [
+        0.976,
+        0.939,
+        0.923
+      ],
+      "why_top1": "This past ticket deals with the exact same incident of server downtime and dashboard access issues, utilizing the same troubleshooting steps and resolution."
+    },
+    {
+      "id": "TKT-21510",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "partial",
+        "partial"
+      ],
+      "scores": [
+        0.964,
+        0.956,
+        0.95
+      ],
+      "why_top1": "This past ticket deals with the exact same problem: integration challenges with the project management tool due to suspected compatibility issues, with similar troubleshooting steps attempted and a matching request for assistance."
+    },
+    {
+      "id": "TKT-26815",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "relevant"
+      ],
+      "scores": [
+        0.997,
+        0.999,
+        0.998
+      ],
+      "why_top1": "This past ticket is virtually identical to the new ticket, addressing unauthorized access attempts on medical data despite firewall updates, and its resolution offers direct guidance on what information is needed next."
+    },
+    {
+      "id": "TKT-00109",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "partial",
+        "partial",
+        "relevant"
+      ],
+      "scores": [
+        0.953,
+        0.95,
+        0.93
+      ],
+      "why_top1": "It deals with data analytics tool failures affecting investment optimization and mentions software updates and network problems, but lacks the specific financial database integration aspect of the new ticket."
+    },
+    {
+      "id": "TKT-27603",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "partial",
+        "relevant",
+        "relevant"
+      ],
+      "scores": [
+        0.958,
+        0.956,
+        0.955
+      ],
+      "why_top1": "This ticket deals with system performance and potential incompatible updates affecting hardware-software integration, which is related to configuration and compatibility issues, but focuses primarily on performance degradation rather than general application compatibility errors."
+    },
+    {
+      "id": "TKT-23302",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "partial",
+        "relevant"
+      ],
+      "scores": [
+        0.974,
+        0.952,
+        0.917
+      ],
+      "why_top1": "This past ticket is virtually identical in description, dealing with the exact same system disruptions, investment analytics hindrance, and conflicting software updates during installation."
+    },
+    {
+      "id": "TKT-17187",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "partial"
+      ],
+      "scores": [
+        0.986,
+        0.977,
+        0.956
+      ],
+      "why_top1": "This past ticket deals with the exact same investment software crash during data analysis caused by server overload or bugs, and suggests the same potential resolution steps."
+    },
+    {
+      "id": "TKT-23502",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "relevant"
+      ],
+      "scores": [
+        0.947,
+        0.937,
+        0.936
+      ],
+      "why_top1": "The ticket addresses the exact same request for detailed information on securing hospital IT infrastructure and medical data, and its resolution provides relevant security guidelines."
+    },
+    {
+      "id": "TKT-15694",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "relevant"
+      ],
+      "scores": [
+        0.994,
+        0.995,
+        0.933
+      ],
+      "why_top1": "This past ticket addresses the exact same network disconnection issue involving the Netgear CM1000 router at a financial institution, and its troubleshooting context directly matches the new ticket."
+    },
+    {
+      "id": "TKT-10284",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "relevant"
+      ],
+      "scores": [
+        0.985,
+        0.984,
+        0.979
+      ],
+      "why_top1": "The past ticket addresses the exact same request regarding data analytics services for optimizing investment strategies and provides a directly applicable resolution."
+    },
+    {
+      "id": "TKT-14399",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "partial",
+        "partial"
+      ],
+      "scores": [
+        0.988,
+        0.96,
+        0.958
+      ],
+      "why_top1": "This past ticket describes the exact same data security breach incident with identical details regarding malware or phishing, ongoing system impact, and patient data concerns, providing highly applicable guidance."
+    },
+    {
+      "id": "TKT-08046",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "partial"
+      ],
+      "scores": [
+        0.975,
+        0.968,
+        0.926
+      ],
+      "why_top1": "This past ticket is about the exact same major software integration issue occurring across various platforms and requests similar troubleshooting steps, directly helping with the new ticket."
+    },
+    {
+      "id": "TKT-14840",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "relevant"
+      ],
+      "scores": [
+        0.974,
+        0.963,
+        0.958
+      ],
+      "why_top1": "This past ticket describes the exact same medical data security breach, unauthorized access, and employee negligence incident, and its resolution offers direct guidance on handling the case."
+    },
+    {
+      "id": "TKT-20988",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "partial",
+        "partial"
+      ],
+      "scores": [
+        0.975,
+        0.959,
+        0.953
+      ],
+      "why_top1": "This ticket addresses the exact same problem of underperforming digital ad campaigns due to algorithm updates and targeting issues, and offers a matching resolution path."
+    },
+    {
+      "id": "TKT-07365",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "relevant"
+      ],
+      "scores": [
+        0.949,
+        0.959,
+        0.921
+      ],
+      "why_top1": "This past ticket deals with the exact same core problem of a sudden slowdown in the investment optimization tool during peak usage, involving identical troubleshooting steps and performance issues."
+    },
+    {
+      "id": "TKT-14651",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "partial",
+        "relevant",
+        "partial"
+      ],
+      "scores": [
+        0.939,
+        0.948,
+        0.947
+      ],
+      "why_top1": "This ticket deals with updating software and hardware integrations within a SaaS platform, but focuses on performance optimization rather than the specific compliance, licensing, and documentation needs of the new ticket."
+    },
+    {
+      "id": "TKT-20106",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "partial"
+      ],
+      "scores": [
+        0.995,
+        0.941,
+        0.936
+      ],
+      "why_top1": "This past ticket describes the exact same problem regarding data synchronization and Node.js 14.17 API compatibility on the investment platform, making its resolution and troubleshooting steps directly applicable."
+    },
+    {
+      "id": "TKT-04652",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "partial",
+        "partial"
+      ],
+      "scores": [
+        0.973,
+        0.957,
+        0.955
+      ],
+      "why_top1": "The new ticket asks for information on integrating digital marketing strategies with listed products and requests resources. Past ticket TKT-22173 is almost identical in wording and intent, asking about digital marketing strategies and product integration, making its resolution directly applicable."
+    },
+    {
+      "id": "TKT-01452",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "partial",
+        "relevant",
+        "partial"
+      ],
+      "scores": [
+        0.945,
+        0.942,
+        0.94
+      ],
+      "why_top1": "It deals with a dashboard visualization issue after a software update and scheduling a call, but focuses on investment analytics rather than real-time plant data."
+    },
+    {
+      "id": "TKT-18797",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "partial",
+        "partial",
+        "relevant"
+      ],
+      "scores": [
+        0.937,
+        0.931,
+        0.927
+      ],
+      "why_top1": "It deals with project management SaaS delays during peak hours and server overload, but focuses on troubleshooting an incident rather than general server performance optimization."
+    },
+    {
+      "id": "TKT-27937",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "partial"
+      ],
+      "scores": [
+        0.987,
+        0.974,
+        0.961
+      ],
+      "why_top1": "This past ticket is nearly identical to the new ticket, dealing with a security breach of medical data potentially caused by a security update/error and unresolved firewall log checks, making its resolution directly helpful."
+    },
+    {
+      "id": "TKT-07440",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "irrelevant",
+        "relevant",
+        "irrelevant"
+      ],
+      "scores": [
+        0.947,
+        0.937,
+        0.949
+      ],
+      "why_top1": "This ticket is about Sophos Home antivirus, whereas the new ticket specifically asks about Microsoft Dynamics 365."
+    },
+    {
+      "id": "TKT-17109",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "partial",
+        "partial"
+      ],
+      "scores": [
+        0.992,
+        0.954,
+        0.948
+      ],
+      "why_top1": "This past ticket addresses the exact same critical security breach impacting the EMR/PACS integration platform with identical phrasing and context, making its resolution directly applicable."
+    },
+    {
+      "id": "TKT-10670",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "relevant"
+      ],
+      "scores": [
+        0.973,
+        0.967,
+        0.972
+      ],
+      "why_top1": "This past ticket addresses the exact same issue regarding digital tools in a marketing agency, suspected software conflicts, failed restarts/updates, and productivity impact, with a relevant resolution path."
+    },
+    {
+      "id": "TKT-14696",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "partial",
+        "partial"
+      ],
+      "scores": [
+        0.971,
+        0.944,
+        0.923
+      ],
+      "why_top1": "This past ticket addresses the exact same request concerning the revision of security protocols and data access permissions for healthcare providers, making its resolution directly applicable."
+    },
+    {
+      "id": "TKT-01059",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "relevant"
+      ],
+      "scores": [
+        0.956,
+        0.952,
+        0.924
+      ],
+      "why_top1": "This past ticket addresses the exact same issue of a digital marketing campaign managed by an agency not performing well, mentioning similar troubleshooting steps like targeting inaccuracies and strategy updates."
+    },
+    {
+      "id": "TKT-02307",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "partial",
+        "relevant",
+        "partial"
+      ],
+      "scores": [
+        0.974,
+        0.974,
+        0.968
+      ],
+      "why_top1": "The past ticket focuses specifically on investment optimization using data analysis, whereas the new ticket is a broader request for information on data analysis services, optimization, and investments."
+    },
+    {
+      "id": "TKT-12149",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "partial"
+      ],
+      "scores": [
+        0.972,
+        0.955,
+        0.922
+      ],
+      "why_top1": "This past ticket deals with the exact same issue of a security breach in a hospital IT system with persistent vulnerabilities despite firewall and password updates, and its resolution offers direct assistance."
+    },
+    {
+      "id": "TKT-17737",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "partial"
+      ],
+      "scores": [
+        0.985,
+        0.981,
+        0.946
+      ],
+      "why_top1": "This past ticket is almost identical to the new ticket, describing the exact same products, automated billing system error, and lack of resolution, making the investigation steps directly applicable."
+    },
+    {
+      "id": "TKT-09702",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "partial",
+        "partial",
+        "relevant"
+      ],
+      "scores": [
+        0.962,
+        0.955,
+        0.924
+      ],
+      "why_top1": "It deals with software crashes after updates, but specifically focuses on data analysis sessions rather than a broad multi-product issue."
+    },
+    {
+      "id": "TKT-19718",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "partial",
+        "relevant"
+      ],
+      "scores": [
+        0.997,
+        0.963,
+        0.963
+      ],
+      "why_top1": "This past ticket is an exact match for the new ticket, dealing with general Redis 6.2 integration, compatibility, prerequisites, and pitfalls without adding specific third-party constraints."
+    },
+    {
+      "id": "TKT-27050",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "relevant"
+      ],
+      "scores": [
+        0.987,
+        0.984,
+        0.973
+      ],
+      "why_top1": "This past ticket addresses the exact same issue regarding integration settings for device compatibility in software project management workflows, and its resolution path is directly applicable."
+    },
+    {
+      "id": "TKT-05435",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "relevant"
+      ],
+      "scores": [
+        0.988,
+        0.986,
+        0.963
+      ],
+      "why_top1": "This past ticket addresses the exact same request for security protocol enhancements for protecting medical data in hospital infrastructure, and the resolution directly applies to answering the new ticket."
+    },
+    {
+      "id": "TKT-11274",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "relevant"
+      ],
+      "scores": [
+        0.993,
+        0.975,
+        0.932
+      ],
+      "why_top1": "This past ticket is an identical feature request regarding Salesforce CRM data analytics tools integration, automated data syncing, and customizable dashboards."
+    },
+    {
+      "id": "TKT-17354",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "partial"
+      ],
+      "scores": [
+        0.981,
+        0.97,
+        0.953
+      ],
+      "why_top1": "This past ticket is identical in its description of marketing campaign underperformance, data integration problems, and software compatibility issues, making its resolution directly applicable."
+    },
+    {
+      "id": "TKT-05497",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "partial",
+        "partial",
+        "relevant"
+      ],
+      "scores": [
+        0.959,
+        0.952,
+        0.928
+      ],
+      "why_top1": "This ticket deals with analytics software performance issues and compatibility problems, which is the same broad area as the new ticket, but the specific cause and focus differ slightly."
+    },
+    {
+      "id": "TKT-14396",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "relevant"
+      ],
+      "scores": [
+        0.979,
+        0.965,
+        0.974
+      ],
+      "why_top1": "This past ticket addresses the exact same request for improving security protocols regarding medical data and IT systems in hospitals to protect patient confidentiality, making the resolution directly applicable."
+    },
+    {
+      "id": "TKT-06952",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "relevant"
+      ],
+      "scores": [
+        0.983,
+        0.952,
+        0.927
+      ],
+      "why_top1": "This past ticket addresses the exact same request for integrating IBM SPSS Statistics 28 and provides helpful guidance and troubleshooting steps."
+    },
+    {
+      "id": "TKT-24898",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "relevant"
+      ],
+      "scores": [
+        0.97,
+        0.96,
+        0.962
+      ],
+      "why_top1": "This past ticket addresses the exact same issue of unauthorized access and potential data breach in a healthcare system due to outdated security protocols, and its resolution details follow-up actions like security audits and software updates."
+    },
+    {
+      "id": "TKT-11891",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "partial",
+        "partial",
+        "relevant"
+      ],
+      "scores": [
+        0.941,
+        0.936,
+        0.918
+      ],
+      "why_top1": "It deals with pricing structures and discounts for marketing services, but does not address Microsoft Office 365 or Mailchimp integration specifically."
+    },
+    {
+      "id": "TKT-12531",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "partial"
+      ],
+      "scores": [
+        0.961,
+        0.953,
+        0.937
+      ],
+      "why_top1": "This past ticket describes the exact same billing error concerning software licenses and outdated payment methods, and the resolution asks for troubleshooting steps that directly apply to the new ticket."
+    },
+    {
+      "id": "TKT-25051",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "relevant"
+      ],
+      "scores": [
+        0.987,
+        0.986,
+        0.986
+      ],
+      "why_top1": "This past ticket is an exact duplicate of the new ticket regarding the same multi-product compatibility issue, and its resolution is directly applicable."
+    },
+    {
+      "id": "TKT-04636",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "relevant"
+      ],
+      "scores": [
+        0.995,
+        0.987,
+        0.939
+      ],
+      "why_top1": "This past ticket deals with the exact same request regarding implementing advanced data analytics tools for investment strategies and integration with current systems, and the resolution directly addresses how to assist."
+    },
+    {
+      "id": "TKT-09004",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "partial",
+        "partial",
+        "relevant"
+      ],
+      "scores": [
+        0.933,
+        0.928,
+        0.915
+      ],
+      "why_top1": "This ticket deals with SaaS integrations for the same project management system, but concerns Microsoft Office 365 instead of Adobe products."
+    },
+    {
+      "id": "TKT-08877",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "partial"
+      ],
+      "scores": [
+        0.988,
+        0.991,
+        0.966
+      ],
+      "why_top1": "This past ticket is almost identical in wording and covers the exact same questions regarding billing plans, SaaS subscriptions, discounts, payment methods, and billing processes."
+    },
+    {
+      "id": "TKT-05752",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "partial",
+        "relevant",
+        "partial"
+      ],
+      "scores": [
+        0.974,
+        0.94,
+        0.941
+      ],
+      "why_top1": "It addresses a startup error on Ubuntu 20.04 LTS mentioning the same software and compatibility context, but the new ticket is generally about 'Schlammtat' (likely a typo or specific term for a failure/glitch) during investment data analysis rather than a pure start failure."
+    },
+    {
+      "id": "TKT-27062",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "partial",
+        "partial"
+      ],
+      "scores": [
+        0.984,
+        0.962,
+        0.961
+      ],
+      "why_top1": "This past ticket deals with the exact same issue of decreasing brand engagement metrics due to continuous/inconsistent messaging across platforms, and the resolution offers a similar diagnostic approach that would directly help answer the new ticket."
+    },
+    {
+      "id": "TKT-26373",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "partial",
+        "relevant",
+        "partial"
+      ],
+      "scores": [
+        0.966,
+        0.958,
+        0.958
+      ],
+      "why_top1": "Both tickets deal with poor performance in digital campaigns, but the new ticket specifically points to recent software updates and configuration issues, whereas TKT-16287 focuses on audience targeting."
+    },
+    {
+      "id": "TKT-05144",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "relevant"
+      ],
+      "scores": [
+        0.995,
+        0.992,
+        0.934
+      ],
+      "why_top1": "This past ticket is identical in request and context regarding hospital security measures and medical data protection, and its resolution directly answers the new ticket."
+    },
+    {
+      "id": "TKT-08950",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "relevant",
+        "relevant"
+      ],
+      "scores": [
+        0.983,
+        0.966,
+        0.971
+      ],
+      "why_top1": "This past ticket addresses the exact same inquiry regarding brand growth services, specifically requesting details on social media management, content creation, and SEO, and provides a matching resolution."
+    },
+    {
+      "id": "TKT-11185",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "partial",
+        "partial"
+      ],
+      "scores": [
+        0.982,
+        0.959,
+        0.963
+      ],
+      "why_top1": "The ticket addresses the exact same request for updating outdated digital marketing tools due to integration and performance tracking issues, and its resolution offers direct guidance."
+    },
+    {
+      "id": "TKT-18755",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "partial",
+        "partial"
+      ],
+      "scores": [
+        0.981,
+        0.959,
+        0.954
+      ],
+      "why_top1": "This past ticket addresses the exact same request regarding detailed product compatibility, operating systems, hardware requirements, and known integration limitations before making a purchase."
+    },
+    {
+      "id": "TKT-15588",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "partial",
+        "relevant",
+        "irrelevant"
+      ],
+      "scores": [
+        0.901,
+        0.906,
+        0.897
+      ],
+      "why_top1": "It deals with SaaS platform performance drops, but lacks the specific context of delayed project start times."
+    },
+    {
+      "id": "TKT-17012",
+      "model": "gemini-3.5-flash-lite",
+      "ratings": [
+        "relevant",
+        "partial",
+        "partial"
+      ],
+      "scores": [
+        0.948,
+        0.946,
+        0.949
+      ],
+      "why_top1": "This past ticket is about general product integration procedures, guidelines, and documentation, matching the exact core request of the new ticket."
+    }
+  ]
+}

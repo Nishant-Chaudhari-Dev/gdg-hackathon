@@ -51,8 +51,25 @@ DEFAULT_INDEX_RELS = ("research/rag/artifacts/index", "research/rag/index")  # f
 PICKLE_NAME = "kb_index.pkl.gz"
 PICKLE_FORMAT = "sentineldesk-rag-index-v1"
 EMBED_MODEL = os.getenv("EMBED_MODEL", "intfloat/multilingual-e5-small")
-MAX_SEQ_LEN = 256
+MAX_SEQ_LEN = 256  # 99.97% of KB tickets fit (median 91 tokens, p99 181)
 FETCH_FACTOR = 4  # over-fetch, then drop near-identical precedents
+
+# Re-ranking of the dense candidates. `score` / `max_score` always stay the pure cosine
+# similarity, so the gate thresholds are unaffected; only which precedents are shown and
+# their order change. Every knob can be switched off with an env var (set to 0).
+RERANK = os.getenv("RAG_RERANK", "1") != "0"
+RERANK_POOL = int(os.getenv("RAG_RERANK_POOL", "20"))         # dense candidates considered
+LEX_WEIGHT = float(os.getenv("RAG_LEX_WEIGHT", "0.02"))       # rare shared terms: codes, products
+SPEC_WEIGHT = float(os.getenv("RAG_SPEC_WEIGHT", "0.01"))     # concrete steps vs "please send details"
+CROSS_SLOT = os.getenv("RAG_CROSS_LINGUAL_SLOT", "1") != "0"  # surface one other-language precedent
+CROSS_MARGIN = float(os.getenv("RAG_CROSS_MARGIN", "0.03"))   # ... if within this of the last slot
+CROSS_MIN = float(os.getenv("RAG_CROSS_MIN", "0.87"))         # ... and at least this similar
+# Out-of-scope signal folded into max_score: share of query words that (almost) never occur in the
+# KB (doc freq <= 2). Off-topic asks ("Fibonacci", "Fortnite") score ~50%, real tickets ~12%, holdout 0%.
+# max_score = top-1 cosine - OOD_WEIGHT * unknown_share. Off by default (pure cosine) because it must
+# go live together with its own gate thresholds: RAG_OOD_WEIGHT=0.05 with GATE_MIN_RETRIEVAL=0.855,
+# GATE_NO_PRECEDENT=0.816 (see <index>/calibration.json).
+OOD_WEIGHT = float(os.getenv("RAG_OOD_WEIGHT", "0"))
 
 
 # ------------------------------------------------------------------ shared helpers
@@ -84,6 +101,35 @@ def guess_language(text: str) -> str | None:
     de = sum(w in _DE_WORDS for w in words)
     en = sum(w in _EN_WORDS for w in words)
     return "de" if de > en else "en" if en > de else None
+
+
+_TOKEN = re.compile(r"[a-zäöüß0-9][a-zäöüß0-9.\-_/]*[a-zäöüß0-9]|[a-zäöüß0-9]", re.I)
+_STOP = _DE_WORDS | _EN_WORDS | set(
+    "hello hi dear regards thanks team support customer issue problem help would could should "
+    "also any all some get got since today now still again been being into about after before "
+    "very hallo sehr geehrte grüße freundlichen dass wie was wenn oder aber nach auch noch mehr "
+    "kein keine ihr ihre ihnen uns hat sind".split())
+# Concrete resolution steps vs. generic requests for more information (EN + DE).
+_ACTION = re.compile(
+    r"\b(restart|reboot|update|upgrade|reinstall|install|clear|reset|configure|reconfigure|enable|"
+    r"disable|replace|renew|roll ?back|re-?enter|log ?out|sign ?out|navigate|click|go to|apply|"
+    r"patch|flush|reconnect|neu ?start|aktualisier|installier|zurücksetz|setzen sie|konfigurier|"
+    r"aktivier|deaktivier|lösch|leeren|klicken|melden sie sich ab|ersetz|erneuer)", re.I)
+_REQUEST = re.compile(
+    r"(please provide|could you (please )?(provide|share|send)|can you (provide|share|send)|"
+    r"please share|please send|let us know|more (details|information)|additional (details|information)|"
+    r"bitte (teilen|senden|geben|übermitteln)|können sie (uns )?(mitteilen|senden|geben)|"
+    r"weitere (informationen|details)|mehr (informationen|details))", re.I)
+
+
+def _tokens(text: str) -> set[str]:
+    return {t.lower() for t in _TOKEN.findall(text or "") if t.lower() not in _STOP and len(t) > 1}
+
+
+def specificity(answer: str) -> float:
+    """+1 for answers with concrete steps, -1 for answers that only ask for more details."""
+    a, r = len(_ACTION.findall(answer or "")), len(_REQUEST.findall(answer or ""))
+    return max(-1.0, min(1.0, (a - r) / 3.0))
 
 
 def _e5_prefix(model_name: str) -> str:
@@ -216,7 +262,27 @@ class Retriever:
                             model_name=info["embed_model"])
         self.info = info
         self.version = info.get("version", "mE5-small+faiss-flatip")
+        if RERANK or CROSS_SLOT:
+            self.version += "+rerank"
+        # Document frequencies for the rare-term boost (subject + body + answer of every precedent).
+        from collections import Counter
+
+        df = Counter()
+        for s, b, a in zip(self._meta["subject"], self._meta["body"], self._meta["answer"]):
+            df.update(_tokens(f"{s} {b} {a}"))
+        self._df, self._n_docs = df, len(self._meta)
+        # Per-language sub-indexes: the best other-language precedent is rarely in the global top 50.
+        vecs = self._index.reconstruct_n(0, self._index.ntotal)
+        langs = self._meta["language"].to_numpy()
+        self._lang_index = {}
+        for lg in sorted({x for x in langs if x}):
+            ids = np.where(langs == lg)[0]
+            sub = faiss.IndexFlatIP(vecs.shape[1])
+            sub.add(vecs[ids])
+            self._lang_index[lg] = (sub, ids)
         self._enc.encode(["warmup"])  # the first encode is slow; pay it at startup
+        global _SHARED_ENCODER
+        _SHARED_ENCODER = self._enc  # lets the generator reuse the loaded model (semantic grounding)
 
     # -- low-level search, also used by build-time calibration and eval -------------
     def search_vectors(self, qv: np.ndarray, k: int, exclude_ids=(), exclude_keys=()) -> list[list[dict]]:
@@ -237,13 +303,68 @@ class Retriever:
                 break
         return out
 
+    # -- re-ranking ------------------------------------------------------------------
+    def _lexical(self, query_text: str, row: dict) -> float:
+        """Share of the query's rare terms (doc freq <= 2%) that the precedent also contains,
+        IDF-weighted. Rewards exact product names, versions and error codes."""
+        import math
+
+        q = {t for t in _tokens(query_text) if 0 < self._df.get(t, 0) <= 0.02 * self._n_docs}
+        if not q:
+            return 0.0
+        idf = {t: math.log(self._n_docs / self._df[t]) for t in q}
+        doc = _tokens(f"{row['subject']} {row['body']} {row['answer']}")
+        return sum(w for t, w in idf.items() if t in doc) / sum(idf.values())
+
+    def unknown_share(self, text: str) -> float:
+        toks = _tokens(text)
+        return sum(1 for t in toks if self._df.get(t, 0) <= 2) / len(toks) if toks else 0.0
+
+    def coverage(self, text: str, top1: float) -> float:
+        """Precedent-coverage score used as max_score: best cosine minus an out-of-scope penalty."""
+        return max(0.0, min(1.0, top1 - OOD_WEIGHT * self.unknown_share(text)))
+
+    def rank(self, qv: np.ndarray, text: str, k: int, language: str | None,
+             exclude_ids=(), exclude_keys=()) -> tuple[list[dict], float]:
+        """Top-k precedents for one query vector -> (rows, max cosine score).
+        exclude_* lets evals query KB tickets against the index without themselves."""
+        pool = self.search_vectors(qv, max(50, k), exclude_ids, exclude_keys)[0]  # deduped, by cosine
+        if not pool:
+            return [], 0.0
+        max_score = pool[0]["score"]
+        head = pool[:max(RERANK_POOL, k)]
+        if RERANK:
+            # The best cosine match stays #1 (re-ranking it measurably hurt judged top-1 relevance);
+            # positions 2..k are re-ranked, which improved judged top-3 relevance and label metrics.
+            rest = head[1:]
+            for r in rest:
+                r["rerank"] = r["score"] + LEX_WEIGHT * self._lexical(text, r) + SPEC_WEIGHT * specificity(r["answer"])
+            rest.sort(key=lambda r: r["rerank"], reverse=True)
+            head = head[:1] + rest
+        rows = head[:k]
+        if CROSS_SLOT and language and rows and all(r["language"] == language for r in rows):
+            best = None
+            for lg, (sub, ids) in self._lang_index.items():
+                if lg == language:
+                    continue
+                s, i = sub.search(qv, 5)
+                cand = self._rows(s[0], np.where(i[0] >= 0, ids[i[0].clip(min=0)], -1), 1,
+                                  {r["ticket_id"] for r in rows} | set(exclude_ids),
+                                  {r["dedup_key"] for r in rows} | set(exclude_keys))
+                if cand and (best is None or cand[0]["score"] > best["score"]):
+                    best = cand[0]
+            if best and best["score"] >= max(CROSS_MIN, rows[-1]["score"] - CROSS_MARGIN):
+                rows = rows[:-1] + [{**best, "cross_lingual_slot": True}]
+        return rows, max_score
+
     def retrieve(self, req: RetrieveRequest) -> RetrieveResponse:
         if self._fallback is not None:
             return self._fallback.retrieve(req)
         text = ticket_text(req.subject, req.body)
         if not text:
             return RetrieveResponse(hits=[], max_score=0.0, cross_lingual=False, retriever_version=self.version)
-        rows = self.search_vectors(self._enc.encode([text]), req.k)[0]
+        language = req.language or guess_language(text)
+        rows, max_score = self.rank(self._enc.encode([text]), text, req.k, language)
         hits = [
             RetrievedTicket(
                 ticket_id=r["ticket_id"],
@@ -259,9 +380,19 @@ class Retriever:
             )
             for r in rows
         ]
-        cross = bool(req.language) and any(h.language and h.language != req.language for h in hits)
-        return RetrieveResponse(hits=hits, max_score=hits[0].score if hits else 0.0,
+        cross = bool(language) and any(h.language and h.language != language for h in hits)
+        # max_score = precedent coverage (best cosine of all candidates minus the out-of-scope penalty),
+        # independent of re-ranking; the gate thresholds are calibrated on exactly this number.
+        return RetrieveResponse(hits=hits, max_score=round(self.coverage(text, max_score), 4),
                                 cross_lingual=cross, retriever_version=self.version)
+
+
+_SHARED_ENCODER: Encoder | None = None
+
+
+def shared_encoder() -> Encoder | None:
+    """The embedding model loaded by Retriever (None until a dense index is loaded)."""
+    return _SHARED_ENCODER
 
 
 # ------------------------------------------------------------------ fallback (original stub)

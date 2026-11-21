@@ -15,71 +15,74 @@
   },
   "k": 5,
   "gate_thresholds": {
-    "GATE_MIN_RETRIEVAL": 0.87,
-    "GATE_NO_PRECEDENT": 0.841
+    "RAG_OOD_WEIGHT": 0.05,
+    "GATE_MIN_RETRIEVAL": 0.855,
+    "GATE_NO_PRECEDENT": 0.816
   },
   "holdout_all": {
     "n": 5715,
     "queue": {
       "top1_agreement": 0.7617,
-      "precision@5": 0.452,
-      "knn_vote_accuracy": 0.6058,
-      "knn_vote_macro_f1": 0.5569
+      "precision@5": 0.4807,
+      "knn_vote_accuracy": 0.6507,
+      "knn_vote_macro_f1": 0.6096
     },
     "type": {
       "top1_agreement": 0.9179,
-      "precision@5": 0.7965,
-      "knn_vote_accuracy": 0.8532,
-      "knn_vote_macro_f1": 0.8553
+      "precision@5": 0.8067,
+      "knn_vote_accuracy": 0.8654,
+      "knn_vote_macro_f1": 0.8655
     },
     "priority": {
       "top1_agreement": 0.7974,
-      "precision@5": 0.5385,
-      "knn_vote_accuracy": 0.6635,
-      "knn_vote_macro_f1": 0.6457
+      "precision@5": 0.566,
+      "knn_vote_accuracy": 0.7018,
+      "knn_vote_macro_f1": 0.6857
     },
     "top1_same_language_rate": 0.9792,
-    "any_cross_lingual_hit_rate": 0.0626,
+    "any_cross_lingual_hit_rate": 0.494,
+    "below_RAG_OOD_WEIGHT_rate": 0.0,
     "below_GATE_MIN_RETRIEVAL_rate": 0.0,
     "below_GATE_NO_PRECEDENT_rate": 0.0,
     "top1_score_percentiles": {
-      "p5": 0.9374,
-      "p25": 0.9583,
-      "p50": 0.9765,
-      "p75": 0.9894,
-      "p95": 0.9965
+      "p5": 0.9349,
+      "p25": 0.9569,
+      "p50": 0.9753,
+      "p75": 0.989,
+      "p95": 0.9964
     }
   },
   "holdout_excluding_near_dups": {
     "n": 5558,
     "queue": {
       "top1_agreement": 0.7549,
-      "precision@5": 0.4486,
-      "knn_vote_accuracy": 0.6,
-      "knn_vote_macro_f1": 0.5485
+      "precision@5": 0.4775,
+      "knn_vote_accuracy": 0.6443,
+      "knn_vote_macro_f1": 0.6002
     },
     "type": {
       "top1_agreement": 0.9156,
-      "precision@5": 0.7941,
-      "knn_vote_accuracy": 0.8505,
-      "knn_vote_macro_f1": 0.8531
+      "precision@5": 0.8044,
+      "knn_vote_accuracy": 0.8638,
+      "knn_vote_macro_f1": 0.8642
     },
     "priority": {
       "top1_agreement": 0.7917,
-      "precision@5": 0.5361,
-      "knn_vote_accuracy": 0.6589,
-      "knn_vote_macro_f1": 0.6398
+      "precision@5": 0.5636,
+      "knn_vote_accuracy": 0.6976,
+      "knn_vote_macro_f1": 0.6806
     },
     "top1_same_language_rate": 0.9788,
-    "any_cross_lingual_hit_rate": 0.0635,
+    "any_cross_lingual_hit_rate": 0.4971,
+    "below_RAG_OOD_WEIGHT_rate": 0.0,
     "below_GATE_MIN_RETRIEVAL_rate": 0.0,
     "below_GATE_NO_PRECEDENT_rate": 0.0,
     "top1_score_percentiles": {
-      "p5": 0.9372,
-      "p25": 0.9578,
-      "p50": 0.9757,
-      "p75": 0.9887,
-      "p95": 0.9959
+      "p5": 0.9347,
+      "p25": 0.9564,
+      "p50": 0.9745,
+      "p75": 0.9883,
+      "p95": 0.9957
     }
   },
   "cross_lingual": {
@@ -97,11 +100,11 @@
     }
   },
   "latency_ms_single_query": {
-    "p50": 20.0,
-    "p95": 26.6,
+    "p50": 45.3,
+    "p95": 67.8,
     "n": 200,
     "device": "cuda"
   },
-  "batch_throughput_qps": 210.0,
+  "batch_throughput_qps": 29.9,
   "notes": "top1_agreement / kNN vote = label agreement of retrieved precedents with the holdout ticket. Languages (query and precedent) are detected from text, because the dataset's language column is wrong for ~27% of rows labelled 'de'."
 }

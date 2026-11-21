@@ -87,15 +87,19 @@ def main():
     qlang = [guess_language(t) or "?" for t in texts]  # like the gateway: language from the text
     t0 = time.time()
     qv = r._enc.encode(texts, batch_size=128, show_progress=True)
-    all_hits = r.search_vectors(qv, K)
+    # Same ranking the service returns (re-ranking + cross-lingual slot, per env flags) and the
+    # same max_score the gate sees (precedent coverage).
+    ranked = [r.rank(qv[i:i + 1], texts[i], K, None if qlang[i] == "?" else qlang[i]) for i in range(len(texts))]
+    all_hits = [rows_ for rows_, _ in ranked]
+    max_scores = [r.coverage(t, m) for t, (_, m) in zip(texts, ranked)]
     batch_secs = time.time() - t0
 
     near_dup_ids = set(pd.read_csv(NEAR_DUPS)["ticket_id"]) if NEAR_DUPS.exists() else set()
     rows = []
-    for (_, q), hits, lang in zip(test.iterrows(), all_hits, qlang):
+    for (_, q), hits, lang, mx in zip(test.iterrows(), all_hits, qlang, max_scores):
         if not hits:
             continue
-        row = {"near_dup": q["ticket_id"] in near_dup_ids, "top1_score": hits[0]["score"],
+        row = {"near_dup": q["ticket_id"] in near_dup_ids, "top1_score": mx,
                "top1_same_lang": hits[0]["language"] == lang,
                "cross_lingual": any(h["language"] != lang for h in hits)}
         for f in LABELS:
