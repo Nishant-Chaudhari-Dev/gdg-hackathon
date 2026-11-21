@@ -36,15 +36,42 @@ RAG_URL = os.getenv("RAG_URL", "http://localhost:8002")
 INTERNAL_TOKEN = os.getenv("INTERNAL_TOKEN", "dev-token")
 EVAL_REPORT_URI = os.getenv("EVAL_REPORT_URI", "eval/results/latest.json")
 MAX_BODY_CHARS = int(os.getenv("MAX_BODY_CHARS", "8000"))
+OUTAGE_TTL_MIN = float(os.getenv("OUTAGE_TTL_MIN", "30"))  # keep in sync with orchestrator burst.py
 
 store: Store = FirestoreStore() if STORE_KIND == "firestore" else MemoryStore()
 bus = PubSubBus(os.environ.get("GCP_PROJECT", ""), os.getenv("PUBSUB_TOPIC", "tickets")) if BUS_KIND == "pubsub" else HttpBus(ORCH_URL)
 
 
+async def expire_stale_outages() -> int:
+    """Auto-resolve active outages with no new matching ticket for OUTAGE_TTL_MIN (stops stale banners)."""
+    n = 0
+    now = utcnow()
+    for o in await store.list_outages("active"):
+        if (now - o.last_seen).total_seconds() > OUTAGE_TTL_MIN * 60:
+            o.status = "resolved"
+            await store.upsert_outage(o)
+            await store.add_audit(AuditEvent(id=uuid.uuid4().hex, actor="system", action="outage:expired",
+                                             details={"outage_id": o.id, "count": o.count,
+                                                      "idle_minutes": round((now - o.last_seen).total_seconds() / 60, 1)}))
+            n += 1
+    return n
+
+
+async def _expiry_loop() -> None:
+    while True:
+        try:
+            await expire_stale_outages()
+        except Exception as e:  # noqa: BLE001
+            log.warning("outage expiry failed: %r", e)
+        await asyncio.sleep(60)
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     log.info("gateway up: store=%s bus=%s", store.name, bus.name)
+    task = asyncio.create_task(_expiry_loop())
     yield
+    task.cancel()
 
 
 app = FastAPI(title="SentinelDesk Gateway", version="0.1", lifespan=lifespan)
@@ -164,6 +191,7 @@ async def ticket_action(ticket_id: str, a: ActionIn) -> TicketRecord:
 # --------------------------------------------------------------------------- #
 @app.get("/api/outages")
 async def list_outages(status: str | None = None) -> dict:
+    await expire_stale_outages()
     return {"items": await store.list_outages(status)}
 
 
@@ -190,6 +218,7 @@ async def list_audit(limit: int = Query(200, le=1000)) -> dict:
 
 @app.get("/api/metrics")
 async def get_metrics() -> dict:
+    await expire_stale_outages()
     tickets, outages = await asyncio.gather(store.list_tickets(500), store.list_outages())
     return metrics.compute(tickets, outages)
 
