@@ -1,155 +1,107 @@
 {
   "index": {
+    "version": "mE5-small+faiss-flatip-v1",
     "embed_model": "intfloat/multilingual-e5-small",
     "dim": 384,
     "n_indexed": 22850,
-    "n_unique_texts": 22850,
-    "source": "data\\kb_train.csv",
-    "embed_seconds": 109.7,
-    "built_at": "2026-11-21 11:10:19"
+    "n_unique_texts": 22849,
+    "language_label_corrected": 2627,
+    "source": "kb_train.csv",
+    "source_sha1": "7d5689fe2a9c",
+    "model_bundled": true,
+    "embed_device": "cuda",
+    "embed_seconds": 84.4,
+    "built_at": "2026-11-21 11:40:56"
   },
   "k": 5,
-  "no_precedent_threshold": 0.87,
-  "holdout_in_kb_label_space": {
-    "n": 5715,
-    "queue": {
-      "top1_agreement": 0.7631,
-      "precision@5": 0.4526,
-      "knn_vote_accuracy": 0.6082,
-      "knn_vote_macro_f1": 0.5603
-    },
-    "type": {
-      "top1_agreement": 0.9183,
-      "precision@5": 0.7969,
-      "knn_vote_accuracy": 0.8537,
-      "knn_vote_macro_f1": 0.8556
-    },
-    "priority": {
-      "top1_agreement": 0.7972,
-      "precision@5": 0.5391,
-      "knn_vote_accuracy": 0.6637,
-      "knn_vote_macro_f1": 0.6466
-    },
-    "top1_same_language_rate": 0.8591,
-    "below_no_precedent_threshold_rate": 0.0,
-    "top1_score_percentiles": {
-      "p5": 0.9375,
-      "p25": 0.9583,
-      "p50": 0.9764,
-      "p75": 0.9892,
-      "p95": 0.9965
-    }
+  "gate_thresholds": {
+    "GATE_MIN_RETRIEVAL": 0.87,
+    "GATE_NO_PRECEDENT": 0.841
   },
   "holdout_all": {
     "n": 5715,
     "queue": {
-      "top1_agreement": 0.7631,
-      "precision@5": 0.4526,
-      "knn_vote_accuracy": 0.6082,
-      "knn_vote_macro_f1": 0.5603
+      "top1_agreement": 0.7617,
+      "precision@5": 0.452,
+      "knn_vote_accuracy": 0.6058,
+      "knn_vote_macro_f1": 0.5569
     },
     "type": {
-      "top1_agreement": 0.9183,
-      "precision@5": 0.7969,
-      "knn_vote_accuracy": 0.8537,
-      "knn_vote_macro_f1": 0.8556
+      "top1_agreement": 0.9179,
+      "precision@5": 0.7965,
+      "knn_vote_accuracy": 0.8532,
+      "knn_vote_macro_f1": 0.8553
     },
     "priority": {
-      "top1_agreement": 0.7972,
-      "precision@5": 0.5391,
-      "knn_vote_accuracy": 0.6637,
-      "knn_vote_macro_f1": 0.6466
+      "top1_agreement": 0.7974,
+      "precision@5": 0.5385,
+      "knn_vote_accuracy": 0.6635,
+      "knn_vote_macro_f1": 0.6457
     },
-    "top1_same_language_rate": 0.8591,
-    "below_no_precedent_threshold_rate": 0.0,
+    "top1_same_language_rate": 0.9792,
+    "any_cross_lingual_hit_rate": 0.0626,
+    "below_GATE_MIN_RETRIEVAL_rate": 0.0,
+    "below_GATE_NO_PRECEDENT_rate": 0.0,
     "top1_score_percentiles": {
-      "p5": 0.9375,
+      "p5": 0.9374,
       "p25": 0.9583,
-      "p50": 0.9764,
-      "p75": 0.9892,
+      "p50": 0.9765,
+      "p75": 0.9894,
       "p95": 0.9965
     }
   },
   "holdout_excluding_near_dups": {
     "n": 5558,
     "queue": {
-      "top1_agreement": 0.7564,
-      "precision@5": 0.4493,
-      "knn_vote_accuracy": 0.6026,
-      "knn_vote_macro_f1": 0.552
+      "top1_agreement": 0.7549,
+      "precision@5": 0.4486,
+      "knn_vote_accuracy": 0.6,
+      "knn_vote_macro_f1": 0.5485
     },
     "type": {
-      "top1_agreement": 0.916,
-      "precision@5": 0.7945,
-      "knn_vote_accuracy": 0.8512,
-      "knn_vote_macro_f1": 0.8537
+      "top1_agreement": 0.9156,
+      "precision@5": 0.7941,
+      "knn_vote_accuracy": 0.8505,
+      "knn_vote_macro_f1": 0.8531
     },
     "priority": {
-      "top1_agreement": 0.7915,
-      "precision@5": 0.5367,
-      "knn_vote_accuracy": 0.6591,
-      "knn_vote_macro_f1": 0.6408
+      "top1_agreement": 0.7917,
+      "precision@5": 0.5361,
+      "knn_vote_accuracy": 0.6589,
+      "knn_vote_macro_f1": 0.6398
     },
-    "top1_same_language_rate": 0.8553,
-    "below_no_precedent_threshold_rate": 0.0,
+    "top1_same_language_rate": 0.9788,
+    "any_cross_lingual_hit_rate": 0.0635,
+    "below_GATE_MIN_RETRIEVAL_rate": 0.0,
+    "below_GATE_NO_PRECEDENT_rate": 0.0,
     "top1_score_percentiles": {
-      "p5": 0.9373,
+      "p5": 0.9372,
       "p25": 0.9578,
-      "p50": 0.9755,
-      "p75": 0.9885,
+      "p50": 0.9757,
+      "p75": 0.9887,
       "p95": 0.9959
     }
   },
-  "holdout_unseen_text_only": {
-    "n": 5715,
-    "queue": {
-      "top1_agreement": 0.7631,
-      "precision@5": 0.4526,
-      "knn_vote_accuracy": 0.6082,
-      "knn_vote_macro_f1": 0.5603
-    },
-    "type": {
-      "top1_agreement": 0.9183,
-      "precision@5": 0.7969,
-      "knn_vote_accuracy": 0.8537,
-      "knn_vote_macro_f1": 0.8556
-    },
-    "priority": {
-      "top1_agreement": 0.7972,
-      "precision@5": 0.5391,
-      "knn_vote_accuracy": 0.6637,
-      "knn_vote_macro_f1": 0.6466
-    },
-    "top1_same_language_rate": 0.8591,
-    "below_no_precedent_threshold_rate": 0.0,
-    "top1_score_percentiles": {
-      "p5": 0.9375,
-      "p25": 0.9583,
-      "p50": 0.9764,
-      "p75": 0.9892,
-      "p95": 0.9965
-    }
-  },
-  "holdout_exact_text_also_in_kb_rate": 0.0,
   "cross_lingual": {
-    "de_query_to_en_kb": {
-      "n": 2448,
-      "queue_top1_agreement": 0.6891,
-      "type_top1_agreement": 0.8775,
-      "median_top1_score": 0.924
+    "de_query_to_en_kb_only": {
+      "n": 1752,
+      "queue_top1_agreement": 0.6164,
+      "type_top1_agreement": 0.8596,
+      "median_top1_score": 0.919
     },
-    "en_query_to_de_kb": {
-      "n": 3267,
-      "queue_top1_agreement": 0.434,
-      "type_top1_agreement": 0.7894,
-      "median_top1_score": 0.9483
+    "en_query_to_de_kb_only": {
+      "n": 3918,
+      "queue_top1_agreement": 0.488,
+      "type_top1_agreement": 0.7843,
+      "median_top1_score": 0.9161
     }
   },
   "latency_ms_single_query": {
-    "p50": 19.5,
-    "p95": 21.1,
-    "n": 200
+    "p50": 20.0,
+    "p95": 26.6,
+    "n": 200,
+    "device": "cuda"
   },
-  "batch_throughput_qps": 127.0,
-  "notes": "queue/type/priority 'top1_agreement' and kNN vote are label agreement of retrieved precedents with the holdout ticket; type is NaN for ~21% of rows (German-normalised source) and those rows are excluded from type metrics."
+  "batch_throughput_qps": 210.0,
+  "notes": "top1_agreement / kNN vote = label agreement of retrieved precedents with the holdout ticket. Languages (query and precedent) are detected from text, because the dataset's language column is wrong for ~27% of rows labelled 'de'."
 }
