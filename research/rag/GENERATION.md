@@ -33,11 +33,12 @@ These come from the live path: gateway masking and language detection, then the 
 | citation validity | **100%** |
 | language match | **100%** |
 | replies with unsupported numbers | **0%** |
-| faithful, judged by `gemini-3.8-flash` | **98%** (100% faithful or minor; 0 unfaithful) |
+| faithful, judged by `gemini-3.8-flash` | **99%** (1 unfaithful: the reply turned the customer's "restarting … may help" into "you have already tried restarting") |
 | answered by Gemini on the first pass | 100% |
-| escalated because of the draft | 2% (both are price-quote requests with no price in any precedent) |
-| draft latency p50 / p95 | 1.17 s / 1.68 s (contract target < 4 s) |
-| adversarial probes (refund+SLA+lawyer, injection, DE outage, integration+pricing, PII, 2-word DE, off-topic) | 7/7 |
+| escalated because of the draft | 1% (a price-quote request with no price in any precedent) |
+| mean groundedness score | 0.983 |
+| draft latency p50 / p95 | 1.10 s / 1.43 s (contract target < 4 s) |
+| adversarial probes | **6/7**: refund+SLA+lawyer, injection, DE outage, integration+pricing, PII and off-topic all pass. "Passwort vergessen" gets an English reply because the gateway's current `shared/` detector labels it `en`; the proposed detector below fixes this (16/16 on two- or three-word tickets). |
 
 ## Proposed for `shared/` (app owner: Soham)
 The gateway's language detection and PII masking decide the reply language and what Gemini sees. `research/rag/proposed_shared/lang.py` and `pii.py` are drop-in replacements: same function signatures and the same placeholder labels.
