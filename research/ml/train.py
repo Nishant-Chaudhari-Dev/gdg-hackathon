@@ -2,9 +2,13 @@
 SentinelDesk ML: triage model (type / queue / priority) with calibrated probabilities.
     python research/ml/train.py            # FORCE_SAVE=1 to overwrite even if not better
 
-Per head, tries LR / LinearSVC / SGD and their ensembles, picks the best on split==val
-(a bigger ensemble must beat a simpler option by MIN_GAIN). Then calibrates (temperature + bias)
-and tunes the priority=high threshold on split==val. Never reads test.csv.
+Per head:
+  1. tries LR / LinearSVC / SGD and their ensembles, picks the best on split==val
+     (a bigger ensemble must beat a simpler option by MIN_GAIN);
+  2. tries blending in a kNN vote of similar TRAIN tickets (word TF-IDF cosine);
+     kept only if it beats the model by MIN_GAIN on val;
+  3. calibrates (temperature + per-class bias) on split==val.
+Then tunes the priority=high threshold on split==val. Never reads test.csv.
 
 Champion check: the artifact is only overwritten if the new mean val macro-F1 beats the saved model's
 and HP-incident recall >= MIN_HPI; otherwise the run is saved as model_challenger.joblib.
@@ -19,6 +23,7 @@ from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.svm import LinearSVC
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.metrics import f1_score, recall_score, precision_score
+from sklearn.preprocessing import normalize
 from sentinel_core.text import clean
 
 KB = os.getenv("KB_PATH", "data/kb_train.csv")
@@ -40,6 +45,12 @@ CANDIDATES = {
 OPTIONS = {"lr": ["lr"], "svc": ["svc"], "sgd": ["sgd"],
            "lr+svc": ["lr", "svc"], "lr+sgd": ["lr", "sgd"], "lr+svc+sgd": ["lr", "svc", "sgd"]}
 
+# kNN vote grid: k neighbours, similarity power p, blend weight a
+KNN_K = [10, 20, 30, 50]
+KNN_P = [5, 8, 12]
+KNN_A = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+KNN_KMAX = 50
+
 
 def build_text(subject, body):  # MUST match services/ml/app/model.py
     s, b = clean(subject), clean(body)
@@ -48,9 +59,11 @@ def build_text(subject, body):  # MUST match services/ml/app/model.py
 
 def fit_calibrator(P, y):
     L = np.log(np.clip(P, 1e-9, 1.0))
-    def nll(p):
-        Z = L / np.exp(p[0]) + p[1:]
+
+    def nll(params):
+        Z = L / np.exp(params[0]) + params[1:]
         return -log_softmax(Z, axis=1)[np.arange(len(y)), y].mean()
+
     r = minimize(nll, np.zeros(P.shape[1] + 1), method="L-BFGS-B")
     return float(np.exp(r.x[0])), r.x[1:].astype(np.float64)
 
@@ -76,6 +89,26 @@ def pick_option(scores):
     return min(close, key=lambda o: (len(OPTIONS[o]), -scores[o]))
 
 
+def knn_neighbours(Q, XtrT, kmax):
+    """Top-kmax most similar train rows for each query row (cosine on L2-normalised rows)."""
+    idx_all, sim_all = [], []
+    for i in range(0, Q.shape[0], 500):
+        S = (Q[i:i + 500] @ XtrT).toarray()
+        idx = np.argpartition(-S, kmax - 1, axis=1)[:, :kmax]
+        sims = np.take_along_axis(S, idx, 1)
+        order = np.argsort(-sims, axis=1)
+        idx_all.append(np.take_along_axis(idx, order, 1))
+        sim_all.append(np.take_along_axis(sims, order, 1))
+    return np.vstack(idx_all), np.vstack(sim_all)
+
+
+def knn_probs(nb_idx, nb_sim, ytr, n_cls, k, p):  # MUST match services/ml/app/model.py
+    nb = ytr[nb_idx[:, :k]]
+    w = np.clip(nb_sim[:, :k], 0, None) ** p
+    P = np.stack([(w * (nb == j)).sum(1) for j in range(n_cls)], axis=1) + 1e-9
+    return P / P.sum(1, keepdims=True)
+
+
 def main():
     t0 = time.time()
     kb = pd.read_csv(KB).dropna(subset=["body"] + HEADS)
@@ -88,7 +121,14 @@ def main():
     Xva = feat.transform([build_text(s, b) for s, b in zip(va.subject, va.body)])
     print(f"train {len(tr)} | val {len(va)} | features {Xtr.shape[1]:,} | {time.time()-t0:.0f}s", flush=True)
 
+    # kNN index: word columns only, L2-normalised, stored transposed for fast search
+    n_word = len(feat.transformer_list[0][1].vocabulary_)
+    XtrT = normalize(Xtr[:, :n_word]).T.tocsr().astype(np.float32)
+    nb_idx, nb_sim = knn_neighbours(normalize(Xva[:, :n_word]), XtrT, KNN_KMAX)
+    print(f"kNN index {n_word:,} word features | {time.time()-t0:.0f}s", flush=True)
+
     heads, cal, dec, labels, raw_va, cal_va, yva, report, selection = {}, {}, {}, {}, {}, {}, {}, {}, {}
+    knn_params, knn_y = {}, {}
     for h in HEADS:
         fitted, P = {}, {}
         for name, make in CANDIDATES.items():
@@ -105,17 +145,39 @@ def main():
 
         members = [fitted[m] for m in OPTIONS[chosen]]
         Pch = np.mean([P[m] for m in OPTIONS[chosen]], axis=0)
+
+        # kNN vote blend
+        ytr_i = np.array([labs.index(v) for v in tr[h].astype(str)])
+        base_f1 = f1_score(y, Pch.argmax(1), average="macro")
+        best = (base_f1, 0, 0, 0.0)
+        for k in KNN_K:
+            for p in KNN_P:
+                Pk = knn_probs(nb_idx, nb_sim, ytr_i, len(labs), k, p)
+                for a in KNN_A:
+                    s = f1_score(y, ((1 - a) * Pch + a * Pk).argmax(1), average="macro")
+                    if s > best[0]:
+                        best = (s, k, p, a)
+        if best[3] > 0 and best[0] - base_f1 >= MIN_GAIN:
+            _, k, p, a = best
+            Pch = (1 - a) * Pch + a * knn_probs(nb_idx, nb_sim, ytr_i, len(labs), k, p)
+            knn_params[h] = (k, p, a)
+        knn_y[h] = ytr_i.astype(np.int16)
+        print(f"{h:9} kNN blend {knn_params.get(h, 'off')} | val macro-F1 {base_f1:.4f} -> "
+              f"{f1_score(y, Pch.argmax(1), average='macro'):.4f}", flush=True)
+
         T, b = fit_calibrator(Pch, y)
         Pc = apply_cal(Pch, T, b)
         f_raw = f1_score(y, Pch.argmax(1), average="macro")
         f_cal = f1_score(y, Pc.argmax(1), average="macro")
         dec[h] = "cal" if f_cal > f_raw else "raw"
         heads[h], cal[h], labels[h], raw_va[h], cal_va[h], yva[h] = members, (T, b), labs, Pch, Pc, y
-        report[h] = {"chosen": chosen, "val_macro_f1_raw": round(f_raw, 4), "val_macro_f1_cal": round(f_cal, 4),
-                     "decision": dec[h], "temperature": round(T, 3), "ece_raw": round(ece(Pch, y), 4), "ece_cal": round(ece(Pc, y), 4)}
+        report[h] = {"chosen": chosen, "knn": knn_params.get(h), "val_macro_f1_raw": round(f_raw, 4),
+                     "val_macro_f1_cal": round(f_cal, 4), "decision": dec[h], "temperature": round(T, 3),
+                     "ece_raw": round(ece(Pch, y), 4), "ece_cal": round(ece(Pc, y), 4)}
 
     # ---- priority: threshold on calibrated P(high) for recall
-    pl = labels["priority"]; hi = pl.index("high")
+    pl = labels["priority"]
+    hi = pl.index("high")
     base = (cal_va["priority"] if dec["priority"] == "cal" else raw_va["priority"]).argmax(1)
     tl = np.array(labels["type"])
     type_pred = tl[(cal_va["type"] if dec["type"] == "cal" else raw_va["type"]).argmax(1)]
@@ -125,7 +187,8 @@ def main():
     for t in np.round(np.arange(0.20, 0.72, 0.02), 2):
         idx = np.where(cal_va["priority"][:, hi] >= t, hi, base)
         ph = idx == hi
-        rows.append({"thr": t, "high_recall": recall_score(yh, ph), "high_precision": precision_score(yh, ph, zero_division=0),
+        rows.append({"thr": t, "high_recall": recall_score(yh, ph),
+                     "high_precision": precision_score(yh, ph, zero_division=0),
                      "macro_f1": f1_score(yp, idx, average="macro"),
                      "hpi_recall": (ph & (type_pred == "Incident"))[true_hpi].mean()})
     tab = pd.DataFrame(rows).round(4)
@@ -158,12 +221,14 @@ def main():
     gate_tab = pd.DataFrame(grows)
     print("gate table (val):\n", gate_tab.to_string(index=False))
 
-    version = f"tfidf-wc-auto-{time.strftime('%m%d%H%M')}"
+    version = f"tfidf-wc-auto{'-knn' if knn_params else ''}-{time.strftime('%m%d%H%M')}"
     bundle = {"version": version, "featurizer": feat, "heads": heads, "calibration": cal, "decision": dec,
               "high_thr": thr, "weights": WEIGHTS, "selection": {h: selection[h]["chosen"] for h in HEADS},
+              "knn": ({"XtrT": XtrT, "n_word": n_word, "y": knn_y, "params": knn_params} if knn_params else None),
               "text_format": "subject\\nsubject\\nbody (clean) v1"}
     rep = {"version": version, "score_mean_val_macro_f1": score, "heads": report, "selection": selection,
-           "high_thr": thr, "final_val": final, "priority_table": tab.to_dict("records"), "gate_table": gate_tab.to_dict("records")}
+           "knn_params": knn_params, "high_thr": thr, "final_val": final,
+           "priority_table": tab.to_dict("records"), "gate_table": gate_tab.to_dict("records")}
 
     # ---- champion check
     os.makedirs(ART_DIR, exist_ok=True)
