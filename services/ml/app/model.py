@@ -1,5 +1,6 @@
 """
-ML service model: TF-IDF (word + char) + logistic regression, one head per target,
+ML service model: TF-IDF (word + char) + logistic regression, one head per target
+(each head = best of LR / LinearSVC / SGD / ensembles, picked on split==val by research/ml/train.py),
 temperature/bias calibration fitted on split==val, recall-tuned threshold for priority=high.
 Trained by research/ml/train.py. Contract: docs/CONTRACT.md §2.
 
@@ -73,9 +74,9 @@ class TriageModel:
         X = self._feat.transform([build_text(i.subject, (i.body or "")[:MAX_CHARS]) for i in items])
         per_head: dict[str, list[HeadPrediction]] = {}
         for h in HEADS:
-            clf = self._heads[h]
-            labels = [str(c) for c in clf.classes_]
-            raw = clf.predict_proba(X)
+            members = self._heads[h] if isinstance(self._heads[h], (list, tuple)) else [self._heads[h]]
+            labels = [str(c) for c in members[0].classes_]
+            raw = np.mean([m.predict_proba(X) for m in members], axis=0)  # ensemble heads: average member probs
             T, bias = self._cal.get(h, (1.0, None))
             L = np.log(np.clip(raw, 1e-9, 1.0)) / T
             cal = _softmax(L + bias if bias is not None else L)
