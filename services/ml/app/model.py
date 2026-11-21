@@ -1,77 +1,101 @@
 """
-=====================  ML TEAM: THIS IS YOUR FILE  =====================
+ML service model: TF-IDF (word + char) + logistic regression, one head per target,
+temperature/bias calibration fitted on split==val, recall-tuned threshold for priority=high.
+Trained by research/ml/train.py. Contract: docs/CONTRACT.md §2.
 
-Implement `TriageModel.load()` and `TriageModel.predict()`.
-The HTTP layer (main.py), Docker image and deployment are handled for you.
-
-Contract (see docs/CONTRACT.md §2):
-  - input : list[ClassifyRequest]  (subject may be "", body is raw ticket text, PII-masked)
-  - output: list[Classification]   (same order, same length)
-  - every confidence must be a CALIBRATED probability in [0, 1]
-  - `Classification.confidence` = overall confidence the escalation gate thresholds on
-  - must never raise on empty subject / weird unicode / very long bodies
-  - p95 latency target: < 150 ms per single ticket on Cloud Run (2 vCPU, 4 GiB)
-
-Artifacts: put trained files in GCS and set MODEL_URI (gs://.../model.joblib or a dir ending in "/").
-Locally MODEL_URI defaults to research/ml/artifacts/model.joblib.
-
-Until you ship, this falls back to (1) the TF-IDF baseline if `scripts/train_baseline.py`
-was run, else (2) a keyword heuristic, so the rest of the system works end-to-end.
-=========================================================================
+Overall confidence = weighted geometric mean of the three calibrated head confidences
+(weights from the bundle; default type 1, queue 1, priority 2).
+Never raises: any failure falls back to the keyword heuristic.
 """
 from __future__ import annotations
 
 import math
 import os
 
+import numpy as np
+
 from sentinel_core.artifacts import ensure_local, exists
 from sentinel_core.schemas import Classification, ClassifyRequest, HeadPrediction
+from sentinel_core.text import clean
 
 from .heuristic import heuristic_predict
+
+HEADS = ("type", "queue", "priority")
+MAX_CHARS = 8000
+
+
+def build_text(subject, body) -> str:  # MUST match research/ml/train.py
+    s, b = clean(subject), clean(body)
+    return f"{s}\n{s}\n{b}" if s else b
+
+
+def _softmax(Z: np.ndarray) -> np.ndarray:
+    Z = Z - Z.max(axis=1, keepdims=True)
+    E = np.exp(Z)
+    return E / E.sum(axis=1, keepdims=True)
 
 
 class TriageModel:
     version: str = "heuristic-0"
 
     def __init__(self) -> None:
-        self._bundle: dict | None = None
+        self._b: dict | None = None
 
-    # ------------------------------------------------------------------ #
     def load(self) -> None:
-        path = ensure_local(os.getenv("MODEL_URI", "research/ml/artifacts/model.joblib"))
-        if exists(path) and path.endswith(".joblib"):
-            import joblib
+        try:
+            path = ensure_local(os.getenv("MODEL_URI", "research/ml/artifacts/model.joblib"))
+            if exists(path) and path.endswith(".joblib"):
+                import joblib
 
-            self._bundle = joblib.load(path)
-            self.version = self._bundle.get("version", "baseline")
-        # ML TEAM: load your transformer / LightGBM / etc. here instead.
+                b = joblib.load(path)
+                self._feat = b.get("featurizer") or b.get("vectorizer")  # old baseline bundles still load
+                self._heads = b["heads"]
+                self._cal = b.get("calibration", {})
+                self._dec = b.get("decision", {})
+                self._thr = b.get("high_thr")
+                self._w = b.get("weights", {"type": 1.0, "queue": 1.0, "priority": 1.0})
+                self.version = b.get("version", "unknown")
+                self._b = b
+        except Exception:
+            self._b = None
 
-    # ------------------------------------------------------------------ #
     def predict(self, items: list[ClassifyRequest]) -> list[Classification]:
-        if self._bundle is None:
-            return [heuristic_predict(i.subject, i.body, self.version) for i in items]
+        if not items:
+            return []
+        if self._b is not None:
+            try:
+                return self._predict(items)
+            except Exception:
+                pass
+        return [heuristic_predict(i.subject, i.body, self.version) for i in items]
 
-        texts = [f"{i.subject or ''}\n{i.body or ''}" for i in items]
-        X = self._bundle["vectorizer"].transform(texts)
-        heads: dict[str, list[HeadPrediction]] = {}
-        for name, clf in self._bundle["heads"].items():
-            proba = clf.predict_proba(X)
-            labels = list(clf.classes_)
-            preds = []
-            for row in proba:
-                j = int(row.argmax())
-                preds.append(
-                    HeadPrediction(
-                        label=str(labels[j]),
-                        confidence=float(row[j]),
-                        probs={str(l): round(float(p), 4) for l, p in zip(labels, row)},
-                    )
+    def _predict(self, items: list[ClassifyRequest]) -> list[Classification]:
+        X = self._feat.transform([build_text(i.subject, (i.body or "")[:MAX_CHARS]) for i in items])
+        per_head: dict[str, list[HeadPrediction]] = {}
+        for h in HEADS:
+            clf = self._heads[h]
+            labels = [str(c) for c in clf.classes_]
+            raw = clf.predict_proba(X)
+            T, bias = self._cal.get(h, (1.0, None))
+            L = np.log(np.clip(raw, 1e-9, 1.0)) / T
+            cal = _softmax(L + bias if bias is not None else L)
+            idx = (cal if self._dec.get(h) == "cal" else raw).argmax(1)
+            if h == "priority" and self._thr is not None and "high" in labels:
+                hi = labels.index("high")
+                idx = np.where(cal[:, hi] >= self._thr, hi, idx)
+            per_head[h] = [
+                HeadPrediction(
+                    label=labels[j],
+                    confidence=float(min(max(cal[k, j], 0.0), 1.0)),
+                    probs={l: round(float(p), 4) for l, p in zip(labels, cal[k])},
                 )
-            heads[name] = preds
-
+                for k, j in enumerate(idx)
+            ]
+        wsum = sum(self._w.get(h, 1.0) for h in HEADS)
         out = []
         for k in range(len(items)):
-            t, q, p = heads["type"][k], heads["queue"][k], heads["priority"][k]
-            overall = math.exp((math.log(t.confidence) + math.log(q.confidence) + math.log(p.confidence)) / 3)
-            out.append(Classification(type=t, queue=q, priority=p, confidence=round(overall, 4), model_version=self.version))
+            hp = {h: per_head[h][k] for h in HEADS}
+            overall = math.exp(sum(self._w.get(h, 1.0) * math.log(max(hp[h].confidence, 1e-6)) for h in HEADS) / wsum)
+            out.append(Classification(type=hp["type"], queue=hp["queue"], priority=hp["priority"],
+                                      confidence=round(min(max(overall, 0.0), 1.0), 4), model_version=self.version))
         return out
